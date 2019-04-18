@@ -1,8 +1,10 @@
 import numpy
+import numpy as np
 from matplotlib import pyplot
 from mpl_toolkits import mplot3d
 from stl import mesh
-
+import math
+from piece import Piece
 
 def display(meshes):
     # Optionally render the rotated cube faces
@@ -24,7 +26,16 @@ def display(meshes):
     # Show the plot to the screen
     pyplot.show()
 
+def populate_pieces():
+    shape = mesh.Mesh.from_file('3DBlockSearch/hub.stl')
+    orientation = (0, 0, 0)
+    position = (0, 0, 0)
+    piece_list = [Piece(shape, orientation + (10 * i, 10 * i , 10 * i), position + (10 * i, 10 * i , 10 * i)) for i in range(4)]
+    return piece_list
+
 def main():
+    pieces = populate_pieces()
+    meshes = [p.render() for p in pieces]
     # Create 3 faces of a cube
     data = numpy.zeros(6, dtype=mesh.Mesh.dtype)
 
@@ -55,7 +66,18 @@ def main():
     data['vectors'] -= .5
 
     # Generate 4 different meshes so we can rotate them later
-    meshes = [mesh.Mesh(data.copy()) for _ in range(4)]
+    # meshes = [mesh.Mesh(data.copy()) for _ in range(4)]
+
+
+
+    # axis = np.array([1, 0, 0])
+    # theta = math.radians(90)
+    # point = np.array([10, 10, 10])
+
+    # meshes[0].rotate([0, 0, 1], theta)
+    # meshes[0].x += 10
+    # meshes[0].y += 10
+
     display(meshes)
 
     pass

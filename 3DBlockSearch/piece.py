@@ -12,10 +12,9 @@ class Piece:
                             (90 , 180 , 0) means rotate 90 degrees in x and 180 degrees in y and 0 in z axis
         :param position: a tuple (x,y,z) of position in space.
         """
-        self.mesh = mesh.Mesh(shape.copy())
         self.orientation = orientation
         self.position = position
-        self.rendered_mesh = None
+        self.rendered_mesh = self.generate_rendering(shape)
 
 
     def get_hubs(self):
@@ -55,12 +54,17 @@ class Piece:
         Draw the piece
         :return: A mesh oriented and positioned in 3D space
         """
+        return self.rendered_mesh
+
+    def generate_rendering(self, data):
         # Mesh starts around 0,0,0, or origin
-        if (self.rendered_mesh):
-            return self.rendered_mesh
 
         # Rotate mesh into correct orientation using 3 rotations, around axis x, y, and z
-        self.mesh.rotate()
+        for i, axis in enumerate([[0, 0, 1], [0, 1, 0], [1, 0, 0]]):
+            data.rotate(axis, self.orientation[i])
 
         # Translate to correct position. Translations happens from center of the mesh's mass to the objects location
+        for i, translation_obj in enumerate([data.x, data.y, data.z]):
+            translation_obj += self.position[i]
 
+        return data
