@@ -2,7 +2,7 @@
 
 class Piece:
 
-    def __init__(self, mesh, orientation, move):
+    def __init__(self, mesh, orientation, position):
         """
 
         :param mesh: Object defining shape of piece for rendering
@@ -42,5 +42,12 @@ class Piece:
         pass
 
     def __hash__(self):
+        pass
+
+    def render(self):
+        """
+        Draw the piece
+        :return: A mesh oriented and positioned in 3D space
+        """
         pass
 
