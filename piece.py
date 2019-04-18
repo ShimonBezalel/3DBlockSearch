@@ -1,3 +1,5 @@
+import numpy as np
+from stl import mesh
 
 
 class Piece:
@@ -9,7 +11,9 @@ class Piece:
         :param orientation: TODO: Define orientation standard (dice? vector? enum?)
         :param move: spawning parent move
         """
-        pass
+        self.mesh = mesh
+        self.orientation = orientation
+        self.position = position
 
 
     def get_hubs(self):
@@ -49,5 +53,10 @@ class Piece:
         Draw the piece
         :return: A mesh oriented and positioned in 3D space
         """
+        # Mesh starts around 0,0,0, or origin
+
+        # Rotate mesh into correct orientation using 3 rotations, around axis x y and z
         pass
+
+        #
 
