@@ -1,10 +1,8 @@
-import numpy as np
-
 
 class Grid:
 
     def __init__(self):
-       pass
+        pass
 
     def add_move(self, move):
         """
