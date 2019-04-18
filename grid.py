@@ -1,3 +1,8 @@
+import numpy
+
+from matplotlib import pyplot
+from mpl_toolkits import mplot3d
+
 
 class Grid:
 
@@ -93,25 +98,29 @@ class Grid:
         #TODO
         pass
 
-    def display(self):
+    def render(self):
         """
-        Display this board nicely
+        Renders all the pieces on the grid.
+        :return:
         """
-        # Optionally render the rotated cube faces
-        # from matplotlib import pyplot
-        # from mpl_toolkits import mplot3d
-
         # Create a new plot
         figure = pyplot.figure()
         axes = mplot3d.Axes3D(figure)
 
-        # Render the cube faces
-        for m in meshes:
-            axes.add_collection3d(mplot3d.art3d.Poly3DCollection(m.vectors))
+        # Render all pieces
+        for piece in self.pieces:
+            mesh = piece.render()
+            axes.add_collection(mplot3d.art3d.Poly3DCollection(mesh.vectors))
 
-        # Auto scale to the mesh size
-        scale = numpy.concatenate([m.points for m in meshes]).flatten(-1)
+        # Auto scale to mesh size
+        scale = numpy.concatenat([piece.points for piece in self.pieces]).flatten(-1)
         axes.auto_scale_xyz(scale, scale, scale)
 
         # Show the plot to the screen
         pyplot.show()
+
+
+
+
+
+
