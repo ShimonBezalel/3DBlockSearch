@@ -93,31 +93,25 @@ class Grid:
         #TODO
         pass
 
+    def display(self):
+        """
+        Display this board nicely
+        """
+        # Optionally render the rotated cube faces
+        # from matplotlib import pyplot
+        # from mpl_toolkits import mplot3d
 
-class Move:
-    """
-    A Move describes how one of the players is going to spend their move.
+        # Create a new plot
+        figure = pyplot.figure()
+        axes = mplot3d.Axes3D(figure)
 
-    It contains:
-    - Piece: the ID of the piece being used
-    - x/y: the center coordinates of the piece [0-19)
-    - Rotation: how many times the piece should be rotated CW [0-3]
-    - Flip: whether the piece should be flipped (True/False)
-    """
+        # Render the cube faces
+        for m in meshes:
+            axes.add_collection3d(mplot3d.art3d.Poly3DCollection(m.vectors))
 
-    def __init__(self, piece, piece_index, orientation, x=0, y=0):
-        self.piece = piece
-        self.piece_index = piece_index
-        self.x = x
-        self.y = y
-        self.orientation = orientation
+        # Auto scale to the mesh size
+        scale = numpy.concatenate([m.points for m in meshes]).flatten(-1)
+        axes.auto_scale_xyz(scale, scale, scale)
 
-    def __str__(self):
-        out_str = [[' ' for _ in range(5)] for _ in range(5)]
-        for (x, y) in self.orientation:
-            out_str[x][y] = '0'
-        out_str = '\n'.join(
-            [''.join([x_pos for x_pos in out_str[y_val]])
-             for y_val in range(5)]
-        )
-        return ''.join(out_str) + "x: " + str(self.x) + " y: " + str(self.y)
+        # Show the plot to the screen
+        pyplot.show()
