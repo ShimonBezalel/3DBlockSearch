@@ -1,207 +1,99 @@
 import numpy as np
 
 
-class Board:
+class Grid:
 
-    """
-    A Board describes the current state of the game board. It's separate from
-    the game engine to allow the Input objects to check if their moves are valid,
-    etc... without the help of the game engine.
+    def __init__(self):
+       pass
 
-    The Board stores:
-    - board_w/board_h: the width and height of the playing area
-    - state: a 2D array of the board state. -1 = free; 0-3 = player x's tile
-    - _legal: a 4 x 2D array. _legal[player][y][x] is True iff (x,y) is not
-      on another player's piece or adjacent to a player's own piece
-    - connected: a 4 x 2D array. _connected[player][y][x] is True iff (x,y) is
-      diagonally connected to another one of the player's tiles
-    - piece_list: A PieceList object (probably shared with the game engine) to
-      help understand the moves
-    """
-
-    def __init__(self, board_w, board_h, num_players, piece_list, starting_point=(0, 0)):
-        self.board_w = board_w
-        self.board_h = board_h
-        self.num_players = num_players
-        self.scores = [0] * self.num_players
-
-        self.state = np.full((board_h, board_w), -1, np.int8)
-
-        self._legal = np.full((num_players, board_h, board_w), True, np.bool_)
-
-        self.connected = np.full((num_players, board_h, board_w), False, np.bool_)
-        self.connected[0, starting_point[0], starting_point[1]] = True
-        self.piece_list = piece_list
-        self.pieces = np.full((num_players, piece_list.get_num_pieces()), True, np.bool_)
-
-    def add_move(self, player, move):
+    def add_move(self, move):
         """
-        Try to add <player>'s <move>.
+        Apply the given move to self.
+        This method modifies this grid object.
 
-        If the move is legal, the board state is updated; if it's not legal, a
-        ValueError is raised.
-
-        Returns the number of tiles placed on the board.
+        :param move:    Move object to apply to this grid.
         """
-        if not self.check_move_valid(player, move):
-            raise ValueError("Move is not allowed")
+        #TODO
+        pass
 
-        piece = move.piece
-        self.pieces[player, move.piece_index] = False  # mark piece as used
-
-        # Update internal state for each tile
-        for (xi, yi) in move.orientation:
-            (x, y) = (xi + move.x, yi + move.y)
-            self.state[y, x] = player
-
-            # Nobody can play on this square
-            for p in range(self.num_players):
-                self._legal[p][y][x] = False
-
-            # This player can't play next to this square
-            if x > 0:
-                self._legal[player, y, x - 1] = False
-            if x < self.board_w - 1:
-                self._legal[player, y, x + 1] = False
-            if y > 0:
-                self._legal[player, y - 1, x] = False
-            if y < self.board_h - 1:
-                self._legal[player, y + 1, x] = False
-
-            # The diagonals are now attached
-            if x > 0 and y > 0:
-                self.connected[player, y - 1, x - 1] = True
-            if x > 0 and y < self.board_h - 1:
-                self.connected[player, y + 1, x - 1] = True
-            if x < self.board_w - 1 and y < self.board_h - 1:
-                self.connected[player, y + 1, x + 1] = True
-            if x < self.board_w - 1 and y > 0:
-                self.connected[player, y - 1, x + 1] = True
-
-        self.scores[player] += piece.get_num_tiles()
-        return piece.get_num_tiles()
-
-    def do_move(self, player, move):
+    def new_grid_after_move(self, move):
         """
-        Performs a move, returning a new board
+        Return a copy of this grid after the given move was applied to it.
+        This method does NOT modify this grid object.
+
+        :param move:    Move object to apply to the copied grid.
+        :return:        A copy of this grid, with the given move applied to it.
         """
-        new_board = self.__copy__()
-        new_board.add_move(player, move)
+        #TODO
+        pass
 
-        return new_board
-
-    def get_legal_moves(self, player):
+    def get_possible_moves(self):
         """
-        Returns a list of legal moves for given player for this board state
+        Returns a list of all the moves possible on the current grid.
+        :return:        List of moves possible on this grid.
         """
-        # Generate all legal moves
-        move_list = []
-        for piece in self.piece_list:
-            for x in range(self.board_w - 1):
-                for y in range(self.board_h - 1):
-                    for ori in piece:
-                        new_move = Move(piece,
-                                        self.piece_list.pieces.index(piece),
-                                        ori, x, y)
-                        if self.check_move_valid(player, new_move):
-                            move_list.append(new_move)
-        return move_list
+        #TODO
+        pass
 
-    def check_move_valid(self, player, move):
+    def check_move_valid(self, move):
         """
-        Check if <player> can legally perform <move>.
+        Return True if the given move can be legally applied to this grid,
+        otherwise return False.
 
-        For a move to be valid, it must:
-        - Use a piece that is available
-        - Be completely in bounds
-        - Not be intersecting any other tiles
-        - Not be adjacent to any of the player's other pieces
-        - Be diagonally attached to one of the player's pieces or their corner
-
-        Return True if the move is legal or False otherwise.
+        :param move:    Move object to try applying to this grid.
+        :return:        True if move possible, otherwise False.
         """
-        if not self.pieces[player, move.piece_index]:
-            # piece has already been used
-            return False
+        #TODO
+        pass
 
-        attached_corner = False
-
-        for (x, y) in move.orientation:
-            # If any tile is illegal, this move isn't valid
-            if not self.check_tile_legal(player, x + move.x, y + move.y):
-                return False
-
-            if self.check_tile_attached(player, x + move.x, y + move.y):
-                attached_corner = True
-
-            # If at least one tile is attached, this move is valid
-        return attached_corner
-
-    def check_tile_legal(self, player, x, y):
+    def get_cell_at_position(self, x, y, z):
         """
-        Check if it's legal for <player> to place one tile at (<x>, <y>).
+        Return the cell object at coordinates (x,y,z)
 
-        Legal tiles:
-        - Are in bounds
-        - Don't intersect with existing tiles
-        - Aren't adjacent to the player's existing tiles
-
-        Returns True if legal or False if not.
+        :param x:   Cell's X coordinate.
+        :param y:   Cell's Y coordinate.
+        :param z:   Cell's Z coordinate.
+        :return:    Cell object at given coordinates.
         """
-
-        # Make sure tile in bounds
-        if x < 0 or x >= self.board_w or y < 0 or y >= self.board_h:
-            return False
-
-        # Otherwise, it's in the lookup table
-        return self._legal[player, y, x]
-
-    def check_tile_attached(self, player, x, y):
-        """Check if (<x>, <y>) is diagonally attached to <player>'s moves.
-
-        Note that this does not check if this move is legal.
-
-        Returns True if attached or False if not.
-        """
-
-        # Make sure tile in bounds
-        if x < 0 or x >= self.board_w or y < 0 or y >= self.board_h:
-            return False
-
-        # Otherwise, it's in the lookup table
-        return self.connected[player, y, x]
-
-    def get_position(self, x, y):
-        return self.state[y, x]
-
-    def score(self, player):
-        return self.scores[player]
+        #TODO
+        pass
 
     def __eq__(self, other):
-        return np.array_equal(self.state, other.state) and np.array_equal(self.pieces, other.pieces)
+        """
+        Check if this grid is identical to other.
+        :param other:   Grid object to check if identical.
+        :return:        True if grids contain the same pieces at the same
+                        orientations and positions, otherwise False.
+        """
+        #TODO
+        pass
 
     def __hash__(self):
-        return hash(str(self.state))
+        """
+        Return a lightweight, hashed representation of this grid.
+        :return: Lightweight, hashed representation of this grid.
+        """
+        #TODO
+        pass
 
     def __str__(self):
-        out_str = []
-        for row in range(self.board_h):
-            for col in range(self.board_w):
-                if self.state[col, row] == -1:
-                    out_str.append('_')
-                else:
-                    out_str.append(str(self.state[col, row]))
-            out_str.append('\n')
-        return ''.join(out_str)
+        """
+        Return a string describing this grid.
+        :return: String describing this grid.
+        """
+        #TODO
+        pass
 
     def __copy__(self):
-        cpy_board = Board(self.board_w, self.board_h, self.num_players, self.piece_list)
-        cpy_board.state = np.copy(self.state)
-        cpy_board._legal = np.copy(self._legal)
-        cpy_board.connected = np.copy(self.connected)
-        cpy_board.pieces = np.copy(self.pieces)
-        cpy_board.scores = self.scores[:]
-        return cpy_board
+        """
+        Return a copy object of this grid, descend into pieces etc.
+        The returned object should:
+            * Have the same __hash__ as ours
+            * Not point to or modify any of our internal objects, ever.
+        :return:
+        """
+        #TODO
+        pass
 
 
 class Move:
