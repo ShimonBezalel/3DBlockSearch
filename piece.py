@@ -4,16 +4,18 @@ from stl import mesh
 
 class Piece:
 
-    def __init__(self, mesh, orientation, position):
+    def __init__(self, shape, orientation, position):
         """
 
-        :param mesh: Object defining shape of piece for rendering
-        :param orientation: TODO: Define orientation standard (dice? vector? enum?)
-        :param move: spawning parent move
+        :param shape: Object defining shape of piece for rendering
+        :param orientation: tuple of rotations on X, Y and Z axis, in degrees
+                            (90 , 180 , 0) means rotate 90 degrees in x and 180 degrees in y and 0 in z axis
+        :param position: a tuple (x,y,z) of position in space.
         """
-        self.mesh = mesh
+        self.mesh = mesh.Mesh(shape.copy())
         self.orientation = orientation
         self.position = position
+        self.rendered_mesh = None
 
 
     def get_hubs(self):
@@ -54,9 +56,11 @@ class Piece:
         :return: A mesh oriented and positioned in 3D space
         """
         # Mesh starts around 0,0,0, or origin
+        if (self.rendered_mesh):
+            return self.rendered_mesh
 
-        # Rotate mesh into correct orientation using 3 rotations, around axis x y and z
-        pass
+        # Rotate mesh into correct orientation using 3 rotations, around axis x, y, and z
+        self.mesh.rotate()
 
-        #
+        # Translate to correct position. Translations happens from center of the mesh's mass to the objects location
 
