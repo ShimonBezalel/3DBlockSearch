@@ -44,14 +44,14 @@ class Grid:
         #TODO
         pass
 
-    def get_cell_at_position(self, x, y, z):
+    def get_voxel_at_position(self, x, y, z):
         """
-        Return the cell object at coordinates (x,y,z)
+        Return the voxel object at coordinates (x,y,z)
 
-        :param x:   Cell's X coordinate.
-        :param y:   Cell's Y coordinate.
-        :param z:   Cell's Z coordinate.
-        :return:    Cell object at given coordinates.
+        :param x:   Voxel's X coordinate.
+        :param y:   Voxel's Y coordinate.
+        :param z:   Voxel's Z coordinate.
+        :return:    Voxel object at given coordinates.
         """
         #TODO
         pass

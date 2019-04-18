@@ -12,9 +12,9 @@ class Piece:
         pass
 
 
-    def get_voxels(self):
+    def get_hubs(self):
         """
-        Returns a list of voxels spawned by this piece
+        Returns a list of hubs spawned by this piece
         :return:
         """
         pass
