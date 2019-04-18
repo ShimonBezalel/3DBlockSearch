@@ -28,9 +28,9 @@ def display(meshes):
 
 def populate_pieces():
     shape = mesh.Mesh.from_file('3DBlockSearch/hub.stl')
-    orientation = (0, 0, 0)
-    position = (0, 0, 0)
-    piece_list = [Piece(shape, orientation + (10 * i, 10 * i , 10 * i), position + (10 * i, 10 * i , 10 * i)) for i in range(4)]
+    orientation = np.array((0, 0, 0))
+    position = np.array((0, 0, 0))
+    piece_list = [Piece(mesh.Mesh.from_file('3DBlockSearch/hub.stl'), orientation + np.array((90 * i, 90 * i , 90 * i)), position + np.array((10 * i, 10 * i , 10 * i))) for i in range(4)]
     return piece_list
 
 def main():
@@ -75,8 +75,8 @@ def main():
     # point = np.array([10, 10, 10])
 
     # meshes[0].rotate([0, 0, 1], theta)
-    # meshes[0].x += 10
-    # meshes[0].y += 10
+    meshes[0].x += 10
+    # meshes[0].y += 10)
 
     display(meshes)
 
