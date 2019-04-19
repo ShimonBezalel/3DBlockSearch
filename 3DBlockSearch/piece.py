@@ -1,3 +1,5 @@
+import math
+
 import numpy as np
 from stl import mesh
 
@@ -65,6 +67,6 @@ class Piece:
 
         # Translate to correct position. Translations happens from center of the mesh's mass to the objects location
         for i, translation_obj in enumerate([data.x, data.y, data.z]):
-            translation_obj += self.position[i]
+            translation_obj += math.radians(self.position[i])
 
         return data

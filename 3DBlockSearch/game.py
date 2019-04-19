@@ -30,7 +30,7 @@ def populate_pieces():
     shape = mesh.Mesh.from_file('3DBlockSearch/hub.stl')
     orientation = np.array((0, 0, 0))
     position = np.array((0, 0, 0))
-    piece_list = [Piece(mesh.Mesh.from_file('3DBlockSearch/hub.stl'), orientation + np.array((90 * i, 90 * i , 90 * i)), position + np.array((10 * i, 10 * i , 10 * i))) for i in range(4)]
+    piece_list = [Piece( mesh.Mesh.from_file('3DBlockSearch/hub.stl'), orientation + np.array((90 * i, 0 * i , 0 * i)), position + np.array((10 * i, 10 * i , 10 * i))) for i in range(4)]
     return piece_list
 
 def main():
