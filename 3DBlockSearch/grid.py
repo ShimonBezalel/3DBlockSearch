@@ -8,7 +8,9 @@ GRID_UNIT_IN_MM = 20
 
 
 class Voxel:
-    pass
+    def __init__(self, is_target=False):
+        self.is_target = is_target
+        self.hubs = [None, None]
 
 
 class Grid:
@@ -34,13 +36,28 @@ class Grid:
         i_min, i_max = mins[Grid.I], maxs[Grid.I]
         j_min, j_max = mins[Grid.J], maxs[Grid.J]
         w_min, w_max = mins[Grid.W], maxs[Grid.W]
-        self.grid = np.array((i_max - i_min, j_max - j_min, w_max - w_min), dtype=Voxel)
+        self._grid = np.zeros(shape=(i_max - i_min, j_max - j_min, w_max - w_min), dtype=Voxel)
         self._mins = mins
 
+        # Init grid with empty voxels
+        for i in range(i_max - i_min):
+            for j in range(j_max - j_min):
+                for w in range(w_max - w_min):
+                    self._grid[i, j, w] = Voxel()
+
+        # Init targets
+        for target in targets:
+            target_voxel = self.get_voxel_at_coords(target)
+            if not target_voxel:
+                self.set_voxel_at_coords(target, Voxel(is_target=True))
+            else:
+                target_voxel.is_target = True
+
     def get_targets_meshes(self):
-        cubes = []
 
         # Create cube mesh for each target
+        cubes = []
+
         for target in self.targets:
             # Create 3 faces of a cube
             data = np.zeros(6, dtype=mesh.Mesh.dtype)
@@ -66,12 +83,8 @@ class Grid:
             data['vectors'][5] = np.array([[0, 0, 0],
                                            [0, 0, 1],
                                            [1, 0, 1]])
-            # Center mesh on grid
+            # Center cube on grid
             data['vectors'] -= 0.5
-
-            target_coords = np.array(target) * GRID_UNIT_IN_MM * 1.5
-            # data['vectors'] *= GRID_UNIT_IN_MM
-            # data['vectors'] += target_coords
 
             # Generate 2 different meshes so we can rotate them later
             meshes = [mesh.Mesh(data.copy()) for _ in range(2)]
@@ -82,7 +95,12 @@ class Grid:
             meshes[1].rotate([0, 0, 1], np.deg2rad(90))
 
             cube = mesh.Mesh(np.concatenate([m.data for m in meshes]))
+
+            # Scale faces
             cube.data['vectors'] *= GRID_UNIT_IN_MM
+
+            # Scale coordinates
+            target_coords = np.array(target) * GRID_UNIT_IN_MM * 1.5
             cube.data['vectors'] += target_coords
 
             cubes.append(cube)
@@ -96,7 +114,17 @@ class Grid:
         :param coordinates: tuple (i,j,w)
         :return: Voxel at the given coordinates on the grid
         """
-        return self.grid[coordinates - self._mins]  # convert imaginary boundaries to start at (0,0,0)
+        shifted_coords = tuple(coordinates - self._mins - 1)
+        return self._grid[shifted_coords]  # convert imaginary boundaries to start at (0,0,0)
+
+    def set_voxel_at_coords(self, coordinates, voxel):
+        """
+        Set the voxel at the given coordinates to the given voxel
+        :param coordinates: tuple (i,j,w)
+        :param voxel: Voxel to set at given coordinates
+        """
+        shifted_coords = tuple(coordinates - self._mins - 1)
+        self._grid[shifted_coords] = voxel
 
     def add_move(self, move):
         """
