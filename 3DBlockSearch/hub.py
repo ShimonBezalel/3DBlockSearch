@@ -1,15 +1,21 @@
 
 class Hub:
 
+    TYPE_END    = "END_HUB"
+    TYPE_CENTER = "CENTER_HUB"
 
-    def __init__(self, type, orientation, parent):
+    def __init__(self, type, position, rotation, parent):
         """
-
         :param type: One of discreet hub types
         :param orientation: TODO: Define orientation standard (dice? vector? enum?)
-        :param parent: spawning piece
+        :param position:    (X,Y,Z) of the hub
+        :param rotation:    (X_deg, Y_deg, Z_deg) rotation of the hub
+        :param parent:      Spawning Piece object
         """
-        pass
+        self.type = type
+        self.position = position
+        self.rotation = rotation
+        self.parent = parent
 
     def can_connect(self, other):
         """
@@ -17,7 +23,8 @@ class Hub:
         :param other:
         :return:
         """
-        pass
+        if self.type == Hub.TYPE_END:
+
 
     def get_connectible_pieces(self):
         """

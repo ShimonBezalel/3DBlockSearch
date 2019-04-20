@@ -3,6 +3,7 @@ import numpy
 from matplotlib import pyplot
 from mpl_toolkits import mplot3d
 
+GRID_UNIT_IN_MM = 20
 
 class Grid:
 
@@ -109,7 +110,7 @@ class Grid:
 
         # Render all pieces
         for piece in self.pieces:
-            mesh = piece.render()
+            mesh = piece.get_mesh()
             axes.add_collection(mplot3d.art3d.Poly3DCollection(mesh.vectors))
 
         # Auto scale to mesh size
