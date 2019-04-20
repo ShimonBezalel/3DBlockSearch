@@ -1,4 +1,5 @@
 import math
+from copy import deepcopy
 
 import numpy as np
 from stl import mesh
@@ -16,7 +17,7 @@ class Piece:
         """
         self.orientation = orientation
         self.position = position
-        self.rendered_mesh = self.generate_rendering(shape)
+        self.rendered_mesh : mesh.Mesh = self.generate_rendering(deepcopy(shape))
 
 
     def get_hubs(self):
@@ -63,10 +64,10 @@ class Piece:
 
         # Rotate mesh into correct orientation using 3 rotations, around axis x, y, and z
         for i, axis in enumerate([[0, 0, 1], [0, 1, 0], [1, 0, 0]]):
-            data.rotate(axis, self.orientation[i])
+            data.rotate(axis, math.radians(self.orientation[i]))
 
         # Translate to correct position. Translations happens from center of the mesh's mass to the objects location
         for i, translation_obj in enumerate([data.x, data.y, data.z]):
-            translation_obj += math.radians(self.position[i])
+            translation_obj += self.position[i]
 
         return data
