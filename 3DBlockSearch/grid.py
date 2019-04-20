@@ -1,14 +1,102 @@
-import numpy
+import numpy as np
 
 from matplotlib import pyplot
 from mpl_toolkits import mplot3d
+from stl import mesh
 
 GRID_UNIT_IN_MM = 20
 
-class Grid:
 
-    def __init__(self):
-        pass
+class Voxel:
+    pass
+
+
+class Grid:
+    I = 0
+    J = 1
+    W = 2
+
+    def __init__(self, targets):
+        """
+        Initialize a 3D grid with given target coordinates
+        :param targets: array of size 3*n of n targets by coordinates
+                        [[t1_i, t1_j, t1_w],
+                         [t2_i, t2_j, t2_w],
+                         ...
+                         [tn_i, tn_j, tn_w]]
+        """
+
+        # Verify targets were given as a list (even if single)
+        assert hasattr(targets, '__iter__'), "targets must come as a list"
+
+        self.targets = targets
+        mins, maxs = np.min(targets, axis=0), np.max(targets, axis=0)
+        i_min, i_max = mins[Grid.I], maxs[Grid.I]
+        j_min, j_max = mins[Grid.J], maxs[Grid.J]
+        w_min, w_max = mins[Grid.W], maxs[Grid.W]
+        self.grid = np.array((i_max - i_min, j_max - j_min, w_max - w_min), dtype=Voxel)
+        self._mins = mins
+
+    def get_targets_meshes(self):
+        cubes = []
+
+        # Create cube mesh for each target
+        for target in self.targets:
+            # Create 3 faces of a cube
+            data = np.zeros(6, dtype=mesh.Mesh.dtype)
+
+            # Top of the cube
+            data['vectors'][0] = np.array([[0, 1, 1],
+                                           [1, 0, 1],
+                                           [0, 0, 1]])
+            data['vectors'][1] = np.array([[1, 0, 1],
+                                           [0, 1, 1],
+                                           [1, 1, 1]])
+            # Front face
+            data['vectors'][2] = np.array([[1, 0, 0],
+                                           [1, 0, 1],
+                                           [1, 1, 0]])
+            data['vectors'][3] = np.array([[1, 1, 1],
+                                           [1, 0, 1],
+                                           [1, 1, 0]])
+            # Left face
+            data['vectors'][4] = np.array([[0, 0, 0],
+                                           [1, 0, 0],
+                                           [1, 0, 1]])
+            data['vectors'][5] = np.array([[0, 0, 0],
+                                           [0, 0, 1],
+                                           [1, 0, 1]])
+            # Center mesh on grid
+            data['vectors'] -= 0.5
+
+            target_coords = np.array(target) * GRID_UNIT_IN_MM * 1.5
+            # data['vectors'] *= GRID_UNIT_IN_MM
+            # data['vectors'] += target_coords
+
+            # Generate 2 different meshes so we can rotate them later
+            meshes = [mesh.Mesh(data.copy()) for _ in range(2)]
+
+            # meshes[0] is the original half-cube
+            # meshes[1] is rotated to the opposite hald-cube
+            meshes[1].rotate([0, 1, 0], np.deg2rad(180))
+            meshes[1].rotate([0, 0, 1], np.deg2rad(90))
+
+            cube = mesh.Mesh(np.concatenate([m.data for m in meshes]))
+            cube.data['vectors'] *= GRID_UNIT_IN_MM
+            cube.data['vectors'] += target_coords
+
+            cubes.append(cube)
+            # return the merged mesh-cube
+
+        return cubes
+
+    def get_voxel_at_coords(self, coordinates):
+        """
+        Get the voxel at the given coordinates
+        :param coordinates: tuple (i,j,w)
+        :return: Voxel at the given coordinates on the grid
+        """
+        return self.grid[coordinates - self._mins]  # convert imaginary boundaries to start at (0,0,0)
 
     def add_move(self, move):
         """
@@ -17,7 +105,7 @@ class Grid:
 
         :param move:    Move object to apply to this grid.
         """
-        #TODO
+        # TODO
         pass
 
     def new_grid_after_move(self, move):
@@ -28,7 +116,7 @@ class Grid:
         :param move:    Move object to apply to the copied grid.
         :return:        A copy of this grid, with the given move applied to it.
         """
-        #TODO
+        # TODO
         pass
 
     def get_possible_moves(self):
@@ -36,7 +124,7 @@ class Grid:
         Returns a list of all the moves possible on the current grid.
         :return:        List of moves possible on this grid.
         """
-        #TODO
+        # TODO
         pass
 
     def check_move_valid(self, move):
@@ -47,7 +135,7 @@ class Grid:
         :param move:    Move object to try applying to this grid.
         :return:        True if move possible, otherwise False.
         """
-        #TODO
+        # TODO
         pass
 
     def get_voxel_at_position(self, x, y, z):
@@ -59,7 +147,7 @@ class Grid:
         :param z:   Voxel's Z coordinate.
         :return:    Voxel object at given coordinates.
         """
-        #TODO
+        # TODO
         pass
 
     def __eq__(self, other):
@@ -69,7 +157,7 @@ class Grid:
         :return:        True if grids contain the same pieces at the same
                         orientations and positions, otherwise False.
         """
-        #TODO
+        # TODO
         pass
 
     def __hash__(self):
@@ -77,7 +165,7 @@ class Grid:
         Return a lightweight, hashed representation of this grid.
         :return: Lightweight, hashed representation of this grid.
         """
-        #TODO
+        # TODO
         pass
 
     def __str__(self):
@@ -85,7 +173,7 @@ class Grid:
         Return a string describing this grid.
         :return: String describing this grid.
         """
-        #TODO
+        # TODO
         pass
 
     def __copy__(self):
@@ -96,7 +184,7 @@ class Grid:
             * Not point to or modify any of our internal objects, ever.
         :return:
         """
-        #TODO
+        # TODO
         pass
 
     def render(self):
@@ -119,9 +207,3 @@ class Grid:
 
         # Show the plot to the screen
         pyplot.show()
-
-
-
-
-
-

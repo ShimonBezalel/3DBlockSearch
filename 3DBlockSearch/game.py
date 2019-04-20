@@ -8,8 +8,8 @@ from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from stl import mesh
 import math
 
-from grid import GRID_UNIT_IN_MM
-from piece import Piece, orient_mesh
+from grid import GRID_UNIT_IN_MM, Grid
+from piece import Piece#, orient_mesh
 
 
 def display(meshes):
@@ -111,13 +111,18 @@ def sandbox_pieces():
     piece_list = [Piece(hub_mesh, rotation + np.array((90 * i, 90 * i , 90 * i)), position + np.array((10 * i, 10 * i , 10 * i))) for i in range(4)]
     return piece_list
 
+def test_targets():
+    grid = Grid([(0,0,0),(1,0,0), (-1,0,0), (0,1,0), (1,2,3),])
+    return grid.get_targets_meshes()
+
 def main():
     #pieces = sandbox_pieces()
     pieces = single_piece()
     #pieces = positioned_pieces()
     pieces = rotated_pieces()
     #pieces = grid_pieces()
-    meshes = [p.get_mesh() for p in pieces]
+    #meshes = [p.get_mesh() for p in pieces]
+    meshes = test_targets()
     display(meshes)
 
     pass
