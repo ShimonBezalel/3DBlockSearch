@@ -2,7 +2,7 @@ from piece import Piece
 
 class Block (Piece):
 
-    def __init__(self):
+    def __init__(self, shape, orientation, position):
         super().__init__()
 
     def get_supports(self):
@@ -38,6 +38,22 @@ class Block (Piece):
     def get_cog(self):
         """
         Returns this blocks center of gravity as a point
+        :return:
+        """
+        pass
+
+    def is_perpendicular(self, other):
+        """
+        Returns if this block is perpendicular to a given block
+        :param other: a block
+        :return: True iff these two blocks are not have parallel orientations on the XY plane
+        """
+        pass
+
+    def is_overlapping(self, other):
+        """
+        Returns true if these two blocks occupy the same place, meaning a least one of thier cells sit in the same location.
+        :param other: A seperate block to check
         :return:
         """
         pass

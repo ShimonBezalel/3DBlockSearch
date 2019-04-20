@@ -1,7 +1,9 @@
 
 
 class Physics:
-    def is_stable(self, block_state, new_block):
+
+    @staticmethod
+    def is_stable(block_state, new_block):
         """
         Boolean function that returns if the new block to be places in the
         scheme of the current block state will stand, or topple.
@@ -11,10 +13,14 @@ class Physics:
         :return: True iff the new arrangement still stands
         """
         level = new_block.get_level()
+
+        support_blocks = Physics.calculate_supports(new_block, block_state[level - 1])
         relevant_cells = new_block.get_cells()
 
 
-    def calculate_supports(self, block, blocks):
+
+    @staticmethod
+    def calculate_supports(block, blocks):
         """
         Calculated which of a given list of blocks are strictly under this given sample block.
         :param block: a single block with a level L
@@ -36,7 +42,9 @@ class Physics:
         :return: A list of 1 or more blocks that are strictly under the given block,
                 or an empty list if no such blocks exist
         """
-        pass
+        supports = []
+        return supports
+
 
 
 
