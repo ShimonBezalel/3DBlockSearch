@@ -1,21 +1,24 @@
 
 class Hub:
 
-    TYPE_END    = "END_HUB"
+    TYPE_END_1  = "END_HUB_1"
+    TYPE_END_2  = "END_HUB_2"
     TYPE_CENTER = "CENTER_HUB"
 
-    def __init__(self, type, position, rotation, parent):
+    def __init__(self, htype, parent):
         """
-        :param type: One of discreet hub types
-        :param orientation: TODO: Define orientation standard (dice? vector? enum?)
+        :param htype: One of discreet hub types
+        :param orientation: Orientation object of this hub
         :param position:    (X,Y,Z) of the hub
         :param rotation:    (X_deg, Y_deg, Z_deg) rotation of the hub
         :param parent:      Spawning Piece object
         """
-        self.type = type
-        self.position = position
-        self.rotation = rotation
+        self.htype = htype
         self.parent = parent
+
+    @property
+    def orientation(self):
+        return self.parent.orientation
 
     def can_connect(self, other):
         """
@@ -23,8 +26,37 @@ class Hub:
         :param other:
         :return:
         """
-        if self.type == Hub.TYPE_END:
+        if self.htype != other.htype:
+            # TODO: Handle END_1 + END_2 cases
+            return False
 
+        if self.htype == Hub.TYPE_END_1:
+            s = self.orientation
+            o = other.orientation
+
+            #      OPTION 1
+            # --------+--------
+            #   Self  |  Other
+            # --------+--------
+            #   TOP   |  DOWN
+            #   RIGHT |  BACK
+            #   FRONT |  RIGHT
+
+            if  (s.top   == o.down) and \
+                (s.right == o.back) and \
+                (s.front == o.right):
+                return True
+
+            #      OPTION 2
+            # --------+--------
+            #   Self  |  Other
+            # --------+--------
+            #   TOP   |  ?
+            #   RIGHT |  ?
+            #   FRONT |  ?
+
+
+        return False
 
     def get_connectible_pieces(self):
         """
@@ -38,7 +70,7 @@ class Hub:
         pass
 
     def get_orientation(self):
-        pass
+        return self.orientation
 
     def get_spawning_piece(self):
         """

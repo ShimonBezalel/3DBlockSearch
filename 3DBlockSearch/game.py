@@ -132,20 +132,34 @@ def test_targets():
     print("Is (-1,0,0) a target? {}".format(tm100.is_target))
     return grid.get_targets_meshes()
 
+def connectable_pieces():
+    hub_mesh = mesh.Mesh.from_file('hub.stl')
+    rotation = np.array((90, 0, 0))
+    position = np.array((0, 0, 0))
+    original = Piece(hub_mesh, rotation, position)
+    print("Original orientation: {}".format(original.orientation))
+    rx1 = Piece(hub_mesh, rotation + (0, 180, 90), position + (1.5*GRID_UNIT_IN_MM,-1.5 * GRID_UNIT_IN_MM,0))
+    print("RX1 orientation: {}".format(rx1.orientation))
+    print("Original[end1] {} connect to RX1[end1]".format("CAN" if original.get_hubs()[0].can_connect(rx1.get_hubs()[0]) else "CANNOT"))
+    #rx2 = Piece(hub_mesh, rotation + (0, 180, 0), position + (1.5 * GRID_UNIT_IN_MM, -1.5 * GRID_UNIT_IN_MM, 0))
+    #print("Original[end1] {} connect to RX2[end1]".format("CAN" if original.get_hubs()[0].can_connect(rx2.get_hubs()[0]) else "CANNOT"))
+    return [original, rx1]#, rx2]
 
 def main():
     # pieces = sandbox_pieces()
-    pieces = single_piece()
+    #pieces = single_piece()
     # pieces = positioned_pieces()
-    pieces = rotated_pieces()
+    #pieces = rotated_pieces()
     # pieces = grid_pieces()
     # meshes = [p.get_mesh() for p in pieces]
-    targets = test_targets()
-    targets.extend([p.get_mesh() for p in pieces])
-    display(targets)
+    #targets = test_targets()
+    #targets.extend([p.get_mesh() for p in pieces])
+    #display(targets)
+    pieces = connectable_pieces()
+    meshes = [p.get_mesh() for p in pieces]
+    display(meshes)
 
     pass
-
 
 if __name__ == "__main__":
     main()

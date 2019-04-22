@@ -3,6 +3,7 @@ from copy import copy, deepcopy
 import numpy as np
 from stl import mesh
 
+from hub import Hub
 from orientation import Orientation
 
 
@@ -19,6 +20,9 @@ class Piece:
         self.rotation = rotation
         self.position = position
         self.mesh = deepcopy(piece_mesh)
+        self.end1 = Hub(htype=Hub.TYPE_END_1, parent=self)
+        self.end2 = Hub(htype=Hub.TYPE_END_2, parent=self)
+        self.center = Hub(htype=Hub.TYPE_CENTER, parent=self)
         orient_mesh(self.mesh, self.rotation, self.position)
 
     def get_mesh(self):
@@ -28,7 +32,8 @@ class Piece:
         """
         return self.mesh
 
-    def get_orientation(self):
+    @property
+    def orientation(self):
         """
         Return the piece's orientation object (see orientation.py)
         Derived from the piece's rotation.
@@ -38,10 +43,11 @@ class Piece:
 
     def get_hubs(self):
         """
-        Returns a list of hubs spawned by this piece
-        :return:
+        Returns a tuple of hubs spawned by this piece:
+        (END_1, CENTER, END_2)
+        :return: tuple (END_1, CENTER, END_2) - the hubs of this piece
         """
-        pass
+        return (self.end1, self.center, self.end2)
 
     def copy(self):
         """
