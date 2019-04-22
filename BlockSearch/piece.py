@@ -63,7 +63,7 @@ class Piece:
         # Mesh starts around 0,0,0, or origin
 
         # Rotate mesh into correct orientation using 3 rotations, around axis x, y, and z
-        for i, axis in enumerate([[0, 0, 1], [0, 1, 0], [1, 0, 0]]):
+        for i, axis in enumerate([[1, 0, 0], [0, 1, 0], [0, 0, 1]]):
             data.rotate(axis, math.radians(self.orientation[i]))
 
         # Translate to correct position. Translations happens from center of the mesh's mass to the objects location
