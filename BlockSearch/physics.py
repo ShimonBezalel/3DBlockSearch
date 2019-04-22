@@ -13,7 +13,7 @@ Z = 2
 
 
 
-DEBUG = True
+DEBUG = False
 
 class Physics:
     FLOOR_LEVEL = 0
@@ -29,14 +29,6 @@ class Physics:
         :return: True iff the new arrangement still stands
         """
         bottom_level    = new_block.get_bottom_level()
-        top_level       = new_block.get_top_level()
-
-        # # The first level sits on an infinite stable ground and needs no further calculation
-        # if bottom_level == Physics.FLOOR_LEVEL:
-        #     if DEBUG:
-        #         display_board(block_state, [], new_block)
-        #
-        #     return True
 
         # Initiate the relation to surrounding blocks in the tower
         if (bottom_level - 1) in block_state:
@@ -55,25 +47,6 @@ class Physics:
 
         return Physics.is_stable_helper(block_state, new_block)
 
-
-
-        # blocks_below: Set[Block] = new_block.get_blocks_below()
-        # blocks_above: Set[Block] = new_block.get_blocks_above()
-        # if not blocks_below:
-        #     new_block.set_blocks_below(Physics.calculate_below(new_block, block_state[bottom_level - 1]))
-        #     blocks_below = new_block.get_blocks_below()
-
-        # if not blocks_above:
-        #     new_block.set_blocks_above(Physics.calculate_above(new_block, block_state))
-        #     blocks_above = new_block.get_blocks_above()
-
-        # if DEBUG:
-        #     display_board(block_state, blocks_below, new_block)
-
-        # Empty set means block is floating in air. This is considered a bug in case new blocks
-        # are only spawned off others
-        # if blocks_below != []:
-
     @staticmethod
     def is_stable_helper(block_state: Dict[float or int, List[Block]], new_block : Block):
         bottom_level = new_block.get_bottom_level()
@@ -90,20 +63,12 @@ class Physics:
         blocks_below: Set[Block] = new_block.get_blocks_below()
         blocks_above: Set[Block] = new_block.get_blocks_above()
 
-        # if not blocks_below:
-        #     new_block.set_blocks_below(Physics.calculate_below(new_block, block_state[bottom_level - 1]))
-        #     blocks_below = new_block.get_blocks_below()
-        #
-        # if not blocks_above:
-        #     new_block.set_blocks_above(Physics.calculate_above(new_block, block_state))
-        #     blocks_above = new_block.get_blocks_above()
-
         if DEBUG:
             display_board(block_state, list(blocks_below), new_block)
 
         # Empty set means block is floating in air. This is considered a bug in case new blocks
         # are only spawned off others
-        assert blocks_below
+        # assert blocks_below
         if blocks_below != []:
 
             # The aggregate center of gravity will take into consideration any support from above

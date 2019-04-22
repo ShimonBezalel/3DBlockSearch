@@ -425,8 +425,14 @@ class Block (Piece):
             block.reset_aggregate_mesh()
 
     def update_aggregate_mesh(self, new_mesh):
-        self._memoized_aggregate = mesh.Mesh([self._memoized_aggregate] + [new_mesh])
-        for block in self.get_blocks_below():
-            block.update_aggregate_mesh(new_mesh)
+        meshes = [new_mesh]
+        if self._memoized_aggregate:
+            meshes += [self._memoized_aggregate]
+
+        self._memoized_aggregate = mesh.Mesh(np.concatenate([m.data for m in meshes]))
+
+        if self.get_blocks_below():
+            for block in self.get_blocks_below():
+                block.update_aggregate_mesh(new_mesh)
 
 
