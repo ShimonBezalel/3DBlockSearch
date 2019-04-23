@@ -4,24 +4,24 @@ import numpy as np
 from stl import mesh
 
 from hub import Hub
-from orientation import Orientation
+from orientation import Orientation, orient_mesh
 
 
 class Piece:
 
-    def __init__(self, piece_mesh, rotation, position):
+    def __init__(self, rotation=np.array((0,0,0)), position=np.array((0,0,0)), piece_mesh=mesh.Mesh.from_file("stl/piece.stl")):
         """
-
         :param piece_mesh: Object defining shape of piece for rendering, will be DEEP COPIED
         :param rotation: tuple of rotations on X, Y and Z axis, in degrees
                             (90 , 180 , 0) means rotate 90 degrees in x and 180 degrees in y and 0 in z axis
         :param position: a tuple (x,y,z) of position in space.
         """
+
         self.rotation = rotation
         self.position = position
         self.mesh = deepcopy(piece_mesh)
-        self.end1 = Hub(htype=Hub.TYPE_END_1, parent=self)
-        self.end2 = Hub(htype=Hub.TYPE_END_2, parent=self)
+        self.end1 = Hub(htype=Hub.TYPE_END_1, parent=self, parent_local_face=Orientation.FRONT)
+        self.end2 = Hub(htype=Hub.TYPE_END_2, parent=self, parent_local_face=Orientation.BACK)
         self.center = Hub(htype=Hub.TYPE_CENTER, parent=self)
         orient_mesh(self.mesh, self.rotation, self.position)
 
@@ -68,27 +68,3 @@ class Piece:
 
     def __hash__(self):
         pass
-
-
-def orient_mesh(mesh_data, rotation, translation):
-    """
-    Rotate and translate the given mesh according to given rotation and position.
-    :param mesh_data:   Mesh to rotate and translate
-    :param rotation:    Rotation in degrees per axis - (x_deg, y_deg, z_deg)
-    :param translation: Translation in grid units per axis - (x_shift, y_shift, z_shift)
-    """
-
-    # Rotate mesh into correct orientation using 3 rotations, around axis x, y, and z
-    for i, axis in enumerate([[1, 0, 0], [0, 1, 0], [0, 0, 1]]):
-        mesh_data.rotate(axis, np.radians(rotation[i]))
-
-    # Translate to correct position. Translations happens from center of the mesh's mass to the objects location
-    for i, translation_obj in enumerate([mesh_data.x, mesh_data.y, mesh_data.z]):
-        translation_obj += translation[i]
-
-def transform_mesh(mesh_data, rotation, translation):
-    matrix = np.zeros((4,4))
-    matrix[0:3, 0:3] = np.diag(np.deg2rad(rotation))
-    matrix[0:3,3] = np.array((translation))
-    matrix[3,3] = 1
-    mesh_data.transform(matrix)
