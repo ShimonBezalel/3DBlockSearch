@@ -22,7 +22,7 @@ class Hub:
     PIECE_FACE_END_1 = Orientation.LEFT
     PIECE_FACE_END_2 = Orientation.RIGHT
 
-    def __init__(self, htype, parent, parent_local_face=None):
+    def __init__(self, htype, parent, parent_local_face=None): #TODO: Solve import problems of Piece, set default parent=Piece()
         """
         :param htype: One of discreet hub types
         :param orientation: Orientation object of this hub
@@ -91,22 +91,38 @@ class Hub:
             # --------+--------
             #   Self  |  Other
             # --------+--------
-            #   TOP   |  DOWN
-            #   RIGHT |  BACK
-            #   FRONT |  RIGHT
+            #   TOP   |  LEFT
+            #   RIGHT |  DOWN
+            #   FRONT |  BACK
 
-            if (s.top == o.down) and \
-                    (s.right == o.back) and \
-                    (s.front == o.right):
+            if (s.top == o.left) and \
+                    (s.right == o.down) and \
+                    (s.front == o.back):
                 return True
 
             #      OPTION 2
             # --------+--------
             #   Self  |  Other
             # --------+--------
-            #   TOP   |  ?
-            #   RIGHT |  ?
-            #   FRONT |  ?
+            #   TOP   |  BACK
+            #   RIGHT |  LEFT
+            #   FRONT |  DOWN
+            if (s.top == o.back) and \
+                    (s.right == o.left) and \
+                    (s.front == o.down):
+                return True
+
+            #      OPTION 3
+            # --------+--------
+            #   Self  |  Other
+            # --------+--------
+            #   TOP   |  DOWN
+            #   RIGHT |  BACK
+            #   FRONT |  LEFT
+            if (s.top == o.down) and \
+                    (s.right == o.back) and \
+                    (s.front == o.left):
+                return True
 
         return False
 
