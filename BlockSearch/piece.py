@@ -7,6 +7,9 @@ from stl import mesh
 
 class Piece:
 
+    def __init__(self):
+        self.orientation = None
+
     def __init__(self, shape, orientation, position):
         """
 

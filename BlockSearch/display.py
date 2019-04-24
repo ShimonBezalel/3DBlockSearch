@@ -18,7 +18,7 @@ new_color       = (0, 0, 1)
 emphasis_color  = (1, 0, 0)
 matte_color     = (0.8, 0.8, 0.8)
 
-def display(meshes):
+def display(meshes, scale=None):
     # Optionally render the rotated cube faces
     # from matplotlib import pyplot
     # from mpl_toolkits import mplot3d
@@ -27,12 +27,17 @@ def display(meshes):
     figure = pyplot.figure()
     axes = mplot3d.Axes3D(figure)
 
+    if scale:
+        plt.xlim(-scale, scale)
+        plt.ylim(-scale, scale)
+        axes.scatter([0, 0], [0, 0], [-scale, scale], c='w', marker='.')
+
     # Render the cube faces
     for i, m in enumerate(meshes):
         # axes.add_collection3d(mplot3d.art3d.Poly3DCollection(m.vectors))
         i += 1
         mesh = Poly3DCollection(m.vectors, alpha=0.70)
-        face_color = [(0.5 * i) % 1, (0.3 * i) % 1, (0.7 * i) % 1]
+        face_color = [(0.7 * i) % 1, (0.5 * i) % 1, (0.3 * i) % 1]
         mesh.set_facecolor(face_color)
         mesh.set_edgecolor('black')
 

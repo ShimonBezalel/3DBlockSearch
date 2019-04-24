@@ -1,10 +1,13 @@
-from BlockSearch.block import Block, ORIENTATIONS, ORIENTATION
+from BlockSearch.block import Block, ORIENTATIONS, ORIENTATION, Floor
 from unittest import TestCase
 from stl import mesh
-from BlockSearch.display import display, display_cells, display_multiple_cells, display_multiple_grids
+from BlockSearch.display import *
+from matplotlib.colors import to_rgba
+import time
 
-DISPLAY = False #True
+DISPLAY = True #False
 block_mesh = mesh.Mesh.from_file('kapla.stl')
+floor_mesh = mesh.Mesh.from_file('floor.stl')
 
 class Block_Test(TestCase):
 
@@ -80,6 +83,12 @@ class Block_Test(TestCase):
         block1 = Block(block_mesh, (0,  0, 0), (0, 0, 0))
         block2 = Block(block_mesh, 'short_wide', (0, 0, 0))
         block3 = Block(block_mesh, ORIENTATION.SHORT_WIDE, (0, 0, 0))
+        self.assertEqual(block1.get_cells(), block2.get_cells())
+        self.assertEqual(block1.get_cells(), block3.get_cells())
+
+        block1 = Block(block_mesh, (90,  0, 0), (0, 0, 0))
+        block2 = Block(block_mesh, 'tall_wide', (0, 0, 0))
+        block3 = Block(block_mesh, ORIENTATION.TALL_WIDE, (0, 0, 0))
         self.assertEqual(block1.get_cells(), block2.get_cells())
         self.assertEqual(block1.get_cells(), block3.get_cells())
 
@@ -209,6 +218,114 @@ class Block_Test(TestCase):
         print(block1.get_bottom_level())
         print(block2.get_bottom_level())
         self.assertTrue(block1.get_bottom_level() > block2.get_bottom_level())
+
+    def test_hash(self):
+        block1 = Block(block_mesh, (0, 0, 0), (0, 0, 0))
+        block2 = Block(block_mesh, (0, 0, 0), (0, 0, 0))
+        self.assertEqual(hash(block1), hash(block2))
+
+        blocks = [Block(block_mesh, (0, 0, 0), (0, 0, 0)) for _ in range(10)]
+        for block1 in blocks:
+            for block2 in blocks:
+                self.assertEqual(hash(block1), hash(block2))
+
+        blocks = [Block(block_mesh, (0, 0, 0), (0, 0, 0)) for _ in range(100)]
+        for block1 in blocks:
+            for block2 in blocks:
+                self.assertEqual(hash(block1), hash(block2))
+
+        for orientation in ORIENTATIONS:
+            blocks = [Block(block_mesh, orientation, (0, 0, 0)) for _ in range(10)]
+            for block1 in blocks:
+                for block2 in blocks:
+                    self.assertEqual(hash(block1), hash(block2))
+
+        for orientation in ORIENTATIONS:
+            blocks_1 = [Block(block_mesh, orientation, (10, 10, 10)) for _ in range(10)]
+            blocks_2 = [Block(block_mesh, orientation, (10, 10, 10)) for _ in range(10)]
+            for block1 in blocks_1:
+                for block2 in blocks_2:
+                    self.assertEqual(hash(block1), hash(block2))
+
+
+
+
+    def test_next_block(self):
+        # # simple
+        block1 = Block(block_mesh, (0, 0, 0), (0, 0, 0))
+        sons = [Block(block_mesh, orientation, position)
+                    for orientation, position in block1.gen_possible_block_descriptors()]
+        print("All : {}".format(len(sons)))
+        if DISPLAY:
+            display([b.render() for b in sons + [block1] ], scale=15)
+
+        # limit to type of orientation
+        block1 = Block(block_mesh, (0, 0, 0), (0, 0, 0))
+        for orientation in ORIENTATIONS:
+            sons = [Block(block_mesh, orientation, position)
+                    for orientation, position in block1.gen_possible_block_descriptors(lambda o: o == orientation)]
+            print(orientation + " : {}".format(len(sons)))
+            if DISPLAY:
+                display([b.render() for b in sons + [block1] ], scale=15)
+
+
+        # all orientations around 0, 0, 0
+        for orientation in ORIENTATIONS:
+            block1 = Block(block_mesh, orientation, (0, 0, 0))
+            for orientation in ORIENTATIONS:
+                sons = [Block(block_mesh, orientation, position)
+                        for orientation, position in block1.gen_possible_block_descriptors(lambda o: o == orientation)]
+                print(orientation + " : {}".format(len(sons)))
+
+                if DISPLAY:
+                    display([b.render() for b in sons + [block1] ], scale=15)
+
+        # all orientations around 1, 1, 0
+        for base_orientation in ORIENTATIONS:
+            print("Base orientation : {}".format(base_orientation))
+            block1 = Block(block_mesh, base_orientation, (1, 1, 0))
+            for son_orientation in ORIENTATIONS:
+                sons = list(block1.gen_possible_block_descriptors(lambda o: o == son_orientation))
+                print("\t" + son_orientation + " : {}".format(len(sons)))
+
+                if DISPLAY:
+                    display([b.render() for b in sons + [block1] ], scale=15)
+
+
+    def test_str_time(self):
+        block : Block = Block(block_mesh, (0,0,0), (0,0,0))
+        s = time.time()
+        r = 3000000
+        for i in range(r):
+            _ = str(block)
+        elapse = time.time() - s
+        print("For {}X:\t{}".format(r, elapse))
+        # print(block._quick_data)
+
+    def test_hash_time(self):
+        block : Block = Block(block_mesh, (0,0,0), (0,0,0))
+        s = time.time()
+        r = 1000000
+        for i in range(r):
+            _ = hash(block)
+        elapse = time.time() - s
+        print("For {}X:\t{}".format(r, elapse))
+        print(block.__str__())
+
+class Floor_Tests(TestCase):
+
+    def test_constructor(self):
+        floor = Floor(floor_mesh)
+        if DISPLAY:
+            display([floor.render()])
+
+        block1 = Block(block_mesh, (0, 0, 0), (0, 0, 0))
+        if DISPLAY:
+            display_colored([floor.render(), block1.render()], [to_rgba((0.1, 0.1, 0.1), 0.001 ), 'b'])
+
+
+
+
 
 
 
