@@ -8,6 +8,7 @@ from stl import mesh
 class Piece:
 
     def __init__(self):
+        self._rendered_mesh = None
         self.orientation = None
 
     def __init__(self, shape, orientation, position):
@@ -20,7 +21,9 @@ class Piece:
         """
         self.orientation = orientation
         self.position = position
-        self.rendered_mesh : mesh.Mesh = self.generate_rendering(deepcopy(shape))
+        self._rendered_mesh = None
+
+        # self._rendered_mesh : mesh.Mesh = self.generate_rendering(deepcopy(shape))
 
 
     def get_hubs(self):
@@ -60,17 +63,18 @@ class Piece:
         Draw the piece
         :return: A mesh oriented and positioned in 3D space
         """
-        return self.rendered_mesh
+        return self._rendered_mesh
 
     def generate_rendering(self, data):
+        pass
         # Mesh starts around 0,0,0, or origin
-
-        # Rotate mesh into correct orientation using 3 rotations, around axis x, y, and z
-        for i, axis in enumerate([[1, 0, 0], [0, 1, 0], [0, 0, 1]]):
-            data.rotate(axis, math.radians(self.orientation[i]))
-
-        # Translate to correct position. Translations happens from center of the mesh's mass to the objects location
-        for i, translation_obj in enumerate([data.x, data.y, data.z]):
-            translation_obj += self.position[i]
-
-        return data
+        #
+        # # Rotate mesh into correct orientation using 3 rotations, around axis x, y, and z
+        # for i, axis in enumerate([[1, 0, 0], [0, 1, 0], [0, 0, 1]]):
+        #     data.rotate(axis, math.radians(self.orientation[i]))
+        #
+        # # Translate to correct position. Translations happens from center of the mesh's mass to the objects location
+        # for i, translation_obj in enumerate([data.x, data.y, data.z]):
+        #     translation_obj += self.position[i]
+        #
+        # return data

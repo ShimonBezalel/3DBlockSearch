@@ -1,16 +1,16 @@
 from BlockSearch.block import Block, ORIENTATIONS, ORIENTATION, Floor
 from unittest import TestCase
 from stl import mesh
-from BlockSearch.display import *
+from BlockSearch.render import *
 from matplotlib.colors import to_rgba
 import time
 
-DISPLAY = True #False
+DISPLAY = True  # False
 block_mesh = mesh.Mesh.from_file('kapla.stl')
 floor_mesh = mesh.Mesh.from_file('floor.stl')
 
+from pprint import pprint as pp
 class Block_Test(TestCase):
-
 
     def test_constructor(self):
         block1 = Block(block_mesh, (0, 0, 0), (0, 0, 0))
@@ -176,16 +176,41 @@ class Block_Test(TestCase):
             display_multiple_cells([block1.get_cells(), block2.get_cells()], scale=20)
             display_multiple_grids([block1.get_cover_cells(), block2.get_cover_cells(), spread1, spread2], scale=20)
 
-
-        # cases for empty spreads - should never happen!
-        block1 = Block(block_mesh, (0, 0, 0), ( 0,  0, 0))
-        block2 = Block(block_mesh, (0, 0, 0), ( -15, -15, 0))
-        with self.assertRaises(AssertionError):
-            spread1 = block1.get_spread(block2)
+        block1 = Block(block_mesh, (0, 0, 0), (0, 5, 1))
+        block2 = Block(block_mesh, (0, 0, 0), (-2, -11, 1))
+        block3 = Block(block_mesh, 'flat_wide', (-1, -6, 3))
+        block1.set_blocks_above({block3})
+        block2.set_blocks_above({block3})
+        spread = block1.get_spread(block2)
 
         if DISPLAY:
             display([block1.render(), block2.render()])
+            display_multiple_cells([block1.get_cells(), block2.get_cells()], scale=20)
+            display_multiple_grids([block1.get_cover_cells(), block2.get_cover_cells(), spread], scale=20)
 
+        block1 = Block(block_mesh, (0, 0, 0), (0, 9, 1))
+        block2 = Block(block_mesh, (0, 0, 0), (-2, -13, 1))
+        block3 = Block(block_mesh, 'flat_wide', (-1, -6, 3))
+        block1.set_blocks_above({block3})
+        block2.set_blocks_above({block3})
+        spread = block1.get_spread(block2)
+
+        if DISPLAY:
+            display([block1.render(), block2.render()])
+            display_multiple_cells([block1.get_cells(), block2.get_cells()], scale=20)
+            display_multiple_grids([block1.get_cover_cells(), block2.get_cover_cells(), spread], scale=20)
+
+        block1 = Block(block_mesh, 'short_thin', (-8, -1, 1))
+        block2 = Block(block_mesh, 'short_thin', (7, 1, 1))
+        block3 = Block(block_mesh, 'flat_wide', (0, 0, 3))
+        block1.set_blocks_above({block3})
+        block2.set_blocks_above({block3})
+        spread = block1.get_spread(block2)
+
+        if DISPLAY:
+            display([block1.render(), block2.render()])
+            display_multiple_cells([block1.get_cells(), block2.get_cells()], scale=20)
+            display_multiple_grids([block1.get_cover_cells(), block2.get_cover_cells(), spread], scale=20)
 
     def test_mesh(self):
         block1 = Block(block_mesh, (0, 0, 0), ( 0,  0, 0))
@@ -247,9 +272,6 @@ class Block_Test(TestCase):
                 for block2 in blocks_2:
                     self.assertEqual(hash(block1), hash(block2))
 
-
-
-
     def test_next_block(self):
         # # simple
         block1 = Block(block_mesh, (0, 0, 0), (0, 0, 0))
@@ -291,7 +313,6 @@ class Block_Test(TestCase):
                 if DISPLAY:
                     display([b.render() for b in sons + [block1] ], scale=15)
 
-
     def test_str_time(self):
         block : Block = Block(block_mesh, (0,0,0), (0,0,0))
         s = time.time()
@@ -311,6 +332,41 @@ class Block_Test(TestCase):
         elapse = time.time() - s
         print("For {}X:\t{}".format(r, elapse))
         print(block.__str__())
+
+    def test_son_desc_time(self):
+        result = []
+        size = 1000
+        ss  = time.time()
+        num_of_desc = 0
+        for orientation in ORIENTATIONS:
+            blocks = [Block(block_mesh, orientation, (i, i, 0)) for i in range(size)]
+            # block1 = Block(block_mesh, orientation, (0, 0, 0))
+            o_time = 0
+            for block in blocks:
+                s = time.time()
+                sons_dsc = list(block.gen_possible_block_descriptors())
+                o_time += time.time() - s
+                num_of_desc += len(sons_dsc)
+            result.append((orientation, o_time/size))
+        ee = time.time() - ss
+        print("Time to spawn {} descriptors: {}".format(num_of_desc, ee))
+        pp(result)
+
+    def test_spawn_block_time(self):
+        size = 10
+        all_desc = []
+        for orientation in ORIENTATIONS:
+            blocks = [Block(block_mesh, orientation, (i, i, 0)) for i in range(size)]
+            o_time = 0
+            for block in blocks:
+                all_desc += list(block.gen_possible_block_descriptors())
+        ss = time.time()
+        for desc in all_desc:
+            b = Block(block_mesh, desc[0], desc[1])
+        ee = time.time() - ss
+        print("Time to spawn {} Blocks: {}".format(len(all_desc), ee))
+
+
 
 class Floor_Tests(TestCase):
 

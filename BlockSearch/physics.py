@@ -6,7 +6,7 @@ from stl import mesh
 
 from BlockSearch.block          import Block
 from typing                     import List, Set, Dict, Tuple, Optional
-from BlockSearch.display        import display_board
+from BlockSearch.render         import display_board
 from BlockSearch.tower_state    import Tower_State
 
 X = 0
@@ -16,7 +16,7 @@ Z = 2
 
 DEBUG = False
 
-FLOOR_LEVEL = 0
+FLOOR_LEVEL = 1
 
 def is_stable(tower_state: Tower_State, new_block : Block):
     """
@@ -35,34 +35,24 @@ def is_stable(tower_state: Tower_State, new_block : Block):
         new_block.set_blocks_below(calculate_below(new_block, block_state[bottom_level - 1]))
     new_block.set_blocks_above(calculate_above(new_block, block_state))
 
-    # Clean up changes made downwards in the block tower
-    for block in new_block.get_blocks_below():
-        old = block.get_blocks_above()
-        old.add(new_block)
-        block.set_blocks_above(old)
+    # Last attempt to find if this situation was already stored as a unstable combination
+    if tower_state.is_bad_block(tower_state.stringify_block_neighbors(new_block)):
+        return False
 
-        # Todo: choose one of the following recursive strategies.
-        block.reset_aggregate_mesh()
-        # block.update_aggregate_mesh(new_block.render())
+    # connect the new block to the blocks above and below by making changes to their neighbor setting.
+    new_block.connect()
 
-    # memoized_helper = memoize(is_stable_helper)
-    # return memoized_helper(tower_state, new_block)
-    return is_stable_helper((tower_state, new_block))
+    if is_stable_helper((tower_state, new_block)):
+        new_block.confirm()  # todo may be wrong place
+        return True
+    else:
+        # We can stringify this block's failure, contingent on it's neighbors.
+        # This will allow to quickly check in the future if this block is stable, relative to its surroundings
+        tower_state.add_bad_block_state(new_block)
 
-# def memoize(f):
-#     memo = {}
-#
-#     def helper(arg1, arg2):
-#         x = hash(str(arg1) + str(arg2))
-#         if x not in memo:
-#             print("{} : found new x: {}".format(len(memo), x))
-#             memo[x] = f(arg1, arg2)
-#         return memo[x]
-#
-#     return helper
-
-# def is_stable_helper(tower_state: Tower_State, new_block: Block):
-
+        # release the relation of this block on it neighbors
+        new_block.disconnect()
+        return False
 
 @memoized
 def is_stable_helper(arg):
@@ -75,7 +65,6 @@ def is_stable_helper(arg):
     if bottom_level == FLOOR_LEVEL:
         if DEBUG:
             display_board(block_state, [], new_block)
-
         return True
 
     # Initiate the support block list. Assumed to exist
@@ -87,7 +76,7 @@ def is_stable_helper(arg):
 
     # Empty set means block is floating in air. This is considered a bug in case new blocks
     # are only spawned off others
-    assert blocks_below
+    # assert blocks_below
     if blocks_below != []:
 
         # The aggregate center of gravity will take into consideration any support from above
@@ -127,7 +116,6 @@ def is_stable_helper(arg):
                     return True
 
     return False
-
 
 def calculate_below(block : Block, blocks : List[Block]) -> Set[Block]:
     """
@@ -391,7 +379,6 @@ def combine(meshes):
 #     @staticmethod
 #     def combine(meshes):
 #         return mesh.Mesh(np.concatenate([m.data for m in meshes]))
-
 
 def is_overlapping(block_tower : Tower_State, new_block : Block):
     """

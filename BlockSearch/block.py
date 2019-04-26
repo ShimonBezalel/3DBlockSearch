@@ -1,16 +1,23 @@
-# from pip._internal.utils.misc import enum
+from copy import deepcopy
 from enum import Enum
+from random import shuffle
+
+from memoized import memoized
+
 from BlockSearch.piece import Piece
 import math
 import numpy as np
 from stl import mesh
 from typing import List, Set, Dict, Tuple, Optional, Generator
+from BlockSearch.render import display, display_multiple_grids, display_colored
 
 X = 0
 Y = 1
 Z = 2
 
 COG = 1
+
+DEBUG = True
 
 class ORIENTATION(Enum):
     SHORT_WIDE    = (0, 0, 0),
@@ -28,6 +35,16 @@ ORIENTATIONS = {
     'flat_thin'     : (90, 90, 0),
     'flat_wide'     : (0, 90, 0)
 }
+block_mesh = mesh.Mesh.from_file('kapla.stl')
+
+@memoized
+def init_rotated_mesh(arg):
+    orientation = arg
+    new_mesh = deepcopy(block_mesh)
+    # Rotate mesh into correct orientation using 3 rotations, around axis x, y, and z
+    for i, axis in enumerate([[1, 0, 0], [0, 1, 0], [0, 0, 1]]):
+        new_mesh.rotate(axis, math.radians(orientation[i]))
+    return new_mesh
 
 class Block (Piece):
     """
@@ -47,19 +64,23 @@ class Block (Piece):
     """
     SHAPE_IN_CELLS = (1, 15, 3)
 
+
     def __init__(self):
         """
         Used as copy constructor
         """
         super().__init__()
-        self._str  : str        = None
-        self.position           = None
-        self._spreads_memory    = None
-        self.orientation        = None
-        self.rendered_mesh      = None
-        self._spread_memory     = None
-        self._original_shape    = None
-        self._quick_data : np.ndarray  = None
+        self._temp_above        = set()
+        self._str: str        = "Block N/A"
+        self.position           = (-10, -10, -10)
+        self._spreads_memory    = set()
+        self.orientation        = (0, 0, 0)
+        self._rendered_mesh      = mesh.Mesh([])
+        self._original_shape    = mesh.Mesh([])
+        self._quick_data : np.ndarray  = np.array([])
+        self._memoized_aggregate = mesh.Mesh([])
+        self._aggregate_cog     = None
+        self._repr              = "Block N/A"
 
     def __init__(self, shape : mesh.Mesh, orientation : tuple or str or ORIENTATION, position):
         assert (orientation in ORIENTATIONS or orientation in ORIENTATIONS.values() or type(orientation) == ORIENTATION)
@@ -68,10 +89,14 @@ class Block (Piece):
 
         elif type(orientation) == ORIENTATION:
             orientation = orientation.value[0]
+        # todo: reuse rotation matrix!! can reduce init time by 30%
 
         super().__init__(shape, orientation, position)
+        self._rendered_mesh = deepcopy(init_rotated_mesh(orientation))
+        self._init_translation()
         self._original_shape = shape
         self._spreads_memory = dict()
+        self._temp_above     = set()
         self._init_shape()
         self._init_cog()
         self._init_cells()
@@ -85,6 +110,12 @@ class Block (Piece):
 
         self._h = self._quick_data.__hash__
 
+    def _init_translation(self):
+        # Translate to correct position. Translations happens from center of the mesh's mass to the objects location
+        for i, translation_obj in enumerate([self._rendered_mesh.x, self._rendered_mesh.y, self._rendered_mesh.z]):
+            translation_obj += self.position[i]
+
+
     def get_blocks_below(self) -> Set['Block']:
         """
         Returns a list of the blocks placed strictly under this block, which are supporting it
@@ -92,7 +123,7 @@ class Block (Piece):
         """
         return self._blocks_below_me
 
-    def set_blocks_below(self, blocks : Set['Block']):
+    def set_blocks_below(self, blocks: Set['Block']):
         """
         Permanently links this block to a set of blocks strictly under it, which support it in the air.
         The scheme is assumed to be stable.
@@ -199,8 +230,32 @@ class Block (Piece):
                 for y in inter_y:
                     spread.add((x, y))
 
-        assert (inter_x or inter_y)
+        else: # no common pieces - skew lines
+            """
+                                                    X                   XXXXXXX
+            XXXXXXX                                 X                               X
+                                            or              X       or              X
+                    XXXXXXXX                                X                       X
+                        
+            
+            Relevant for flat pieces only.
+            """
+            pass
+        spread |= self.get_cover_cells()
+        spread |= other.get_cover_cells()
+        candidate_blocks = self.get_blocks_above() & other.get_blocks_above()
 
+        if candidate_blocks:
+            flat_block = candidate_blocks.pop()
+            # if DEBUG:
+            #     display([self.render(), other.render(), flat_block.render()])
+            # assert (flat_block.orientation in (ORIENTATIONS['flat_thin'], ORIENTATIONS['flat_wide']))
+            center_x, center_y, _ = tuple(flat_block.get_cog())
+            skew_center = set()
+            for cell in spread:
+                new_cell = ((cell[X] + center_x)//2, (cell[Y] + center_y)//2)
+                skew_center.add(new_cell)
+            spread |= skew_center
         self._spreads_memory[other] = spread
         other._set_spread(self, spread)
         return spread
@@ -259,8 +314,6 @@ class Block (Piece):
                     self._cells.add((cog[X] + x, cog[Y] + y, cog[Z] + z))
                 self._cover_cells.add((cog[X] + x, cog[Y] + y))
 
-        assert self._cells
-        assert self._cover_cells
 
     def _init_levels(self):
         """
@@ -291,8 +344,8 @@ class Block (Piece):
         self._top_level     = int(max_z)
 
     def _init_cog(self):
-        _, self._cog, _         = self.rendered_mesh.get_mass_properties()
-        self._aggregate_cog     = None # force to be calculated
+        self._cog               = np.array(self.position)
+        self._aggregate_cog       = None  # force to be calculated
 
     def _init_shape(self):
         self.SHAPE_IN_CELLS = Block.orient_cells(self.orientation)
@@ -395,9 +448,9 @@ class Block (Piece):
         #TODO: can be made to go faster with some fancy copying
         # b = Block(self._original_shape, self.orientation, self.position)
         b = Block()
-        b.render_mesh      = self.rendered_mesh
+        b.render_mesh      = self._rendered_mesh
         b._original_shape  = self._original_shape
-        b._spreads_memory  = self._spread_memory
+        b._spreads_memory  = self._spreads_memory
         b.SHAPE_IN_CELLS   = self.SHAPE_IN_CELLS
         b._cog             = self._cog
         b._memoized_aggregate = np.copy(self._memoized_aggregate)
@@ -440,18 +493,19 @@ class Block (Piece):
         aggregate = mesh.Mesh(np.concatenate([m.data for m in data]))
         self._memoized_aggregate = aggregate
         self._aggregate_cog = self._memoized_aggregate.get_mass_properties()[COG]
-        self._repr = self._get_repr()
+        self._repr = "U" + self._get_repr()
         return aggregate
 
     def get_aggregate_data(self):
-        data = [self.rendered_mesh]
+        data = [self._rendered_mesh]
         if self.get_blocks_above():
             for block in self.get_blocks_above():
                 data.extend(block.get_aggregate_data())
         return data
 
     #TODO can memoize block who caused this reset
-    def reset_aggregate_mesh(self):
+    # @memoized
+    def reset_aggregate_mesh(self, catalyst : 'Block' = None) -> None:
         """
         Signal to self to update the aggregate mesh of all blocks below me. Some change must have occurred above
         :return:
@@ -461,25 +515,24 @@ class Block (Piece):
         for block in self.get_blocks_below():
             block.reset_aggregate_mesh()
 
-    def update_aggregate_mesh(self, new_mesh):
+    def update_aggregate_mesh(self, new_mesh) -> None:
         """
         Deprecated - 100 times slower than reset
         Signal to self to update the aggregate mesh of all blocks above me. Some change occurred above
-        :return:
         """
         meshes = [new_mesh]
         if self._memoized_aggregate:
             meshes += [self._memoized_aggregate]
 
         self._memoized_aggregate = mesh.Mesh(np.concatenate((new_mesh.data, self._memoized_aggregate.data)))
-        self._aggregate_cog = self._memoized_aggregate.get_mass_properties()[COG]
-        self._repr = self._get_repr()
+        self._aggregate_cog      = self._memoized_aggregate.get_mass_properties()[COG]
+        self._repr               = self._get_repr()
 
         if self.get_blocks_below():
             for block in self.get_blocks_below():
                 block.update_aggregate_mesh(new_mesh)
 
-    def gen_possible_block_descriptors(self, limit_orientation=lambda o: True) -> Generator[tuple, None, None]:
+    def gen_possible_block_descriptors(self, limit_orientation=lambda o: True, limit_len=60000, random_order=None) -> Generator[tuple, None, None]:
         """
         Generates a (orientation, position) map of possible sons of this block. A son is any block which can sit
         directly above this block, even if unstable.
@@ -487,10 +540,17 @@ class Block (Piece):
                                     default behavior is no limitations
         :return:
         """
+        i = 0
         seen_blocks = set()
         new_level = self.get_top_level() + 1
-        for cell in self.get_cover_cells():
-            for orientation in filter(limit_orientation, ORIENTATIONS.keys()):
+        cover_cells = list(self.get_cover_cells())
+        if random_order:
+            shuffle(cover_cells)
+        for cell in cover_cells:
+            relevant_keys = list(filter(limit_orientation, ORIENTATIONS.keys()))
+            if random_order:
+                shuffle(relevant_keys)
+            for orientation in relevant_keys:
                 if 'flat' in orientation:
                     offset = 0
                 elif 'short' in orientation:
@@ -504,23 +564,31 @@ class Block (Piece):
                 cell_orientation = Block.orient_cells(ORIENTATIONS[orientation])
                 half_depth = cell_orientation[X] // 2
                 half_width = cell_orientation[Y] // 2
-                xrange = range(-half_depth + cell[X], (half_depth + 1) + cell[X])
-                yrange = range(-half_width + cell[Y], (half_width + 1) + cell[Y])
+                xrange = list(range(-half_depth + cell[X], (half_depth + 1) + cell[X]))
+                yrange = list(range(-half_width + cell[Y], (half_width + 1) + cell[Y]))
+                if random_order:
+                    shuffle(xrange)
+                    shuffle(yrange)
                 for x in xrange:
                     for y in yrange:
                         candidate = (ORIENTATIONS[orientation], (x, y, z))
                         if candidate not in seen_blocks:
                             yield candidate
-                            # block = Block(self._original_shape, orientation, position)
-                            # next_blocks.add(block)
+                            i += 1
+                            if i >= limit_len:
+                                return
                         seen_blocks.add(candidate)
-
 
     def _get_repr(self) -> str:
         """
         Heavier calculation of repr, do be done less often, only upon changes to COG.
         """
-        return "Block: O{}, P{}, A_COG{}".format(str(self.orientation), str(self.position), str(self._aggregate_cog))
+        if self._aggregate_cog is not None:
+            return "Block: O{}, P{}, A_COG{}".format(str(self.orientation),
+                                                     str(self.position),
+                                                     str(tuple(self._aggregate_cog.astype(np.int))))
+        return "Block: O{}, P{}, A_COG(N/A)".format(str(self.orientation),
+                                                 str(self.position))
 
     @staticmethod
     def get_str(descriptor) -> str:
@@ -529,6 +597,56 @@ class Block (Piece):
         """
         orientation, position = descriptor
         return "Block: O{}, P{}".format(str(orientation), str(position))
+
+    def confirm(self):
+        """
+        Make changes made by this block permanent
+        :return:
+        """
+        pass
+
+    def disconnect(self):
+        """
+        Undo changes possibly made by connect
+        :return:
+        """
+        # Reset changes downwards in the block tower  (recursively)
+        #           | | |
+        #           V V V
+        for neighbor_block in self.get_blocks_below():
+            neighbor_block._block_above_me.remove(self)
+
+            # resetting the cog's and aggregate meshes is expensive and may be redundant
+            neighbor_block.reset_aggregate_mesh()
+
+        # Reset changes upwards in the block tower  (1 level)
+        #           ^ ^ ^
+        #           | | |
+        for neighbor_block in self.get_blocks_above():
+            neighbor_block._blocks_below_me.remove(self)
+
+    def connect(self):
+        # Make changes downwards in the block tower  (recursively)
+        #           | | |
+        #           V V V
+        for neighbor_block in self.get_blocks_below():
+            neighbor_block._block_above_me.add(self)
+            neighbor_block.reset_aggregate_mesh()
+
+        # Make changes upwards in the block tower  (1 level)
+        #           ^ ^ ^
+        #           | | |
+        for neighbor_block in self.get_blocks_above():
+            neighbor_block._blocks_below_me.add(self)
+        pass
+
+    def render(self):
+        """
+        Draw the piece
+        :return: A mesh oriented and positioned in 3D space
+        """
+        return self._rendered_mesh
+
 
 class Floor(Block):
 

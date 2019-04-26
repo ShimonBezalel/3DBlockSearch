@@ -1,14 +1,19 @@
-from BlockSearch.block import Block, ORIENTATIONS, ORIENTATION
+from random import random, choice, sample, shuffle
+
+from BlockSearch.block import ORIENTATION
 from BlockSearch.physics import *
 from BlockSearch import physics as Physics
 from unittest import TestCase
 from stl import mesh
-from BlockSearch.display import *
+from BlockSearch.render import *
 from BlockSearch.tower_state import *
 import time
+from pprint import pprint as pp
+import uuid
 
-DISPLAY = True #False #True
+DISPLAY = True  # False #True
 block_mesh = mesh.Mesh.from_file('kapla.stl')
+DEBUG = True
 
 new_color = (0, 0, 1)
 emphasis_color = (1, 0, 0)
@@ -29,6 +34,7 @@ block_seq = [
     Block(block_mesh, 'tall_wide',  (6, 0, 7)),
     Block(block_mesh, 'short_thin', (4, 0, 16)),
 ]
+
 
 class Physics_Test(TestCase):
 
@@ -310,14 +316,13 @@ class Physics_Test(TestCase):
     def test_aggregate_cog(self):
         pass
 
-
     def test_tower_not_stable(self):
         DISPLAY = False
         self.build(4, stability_check=True)
         bad_block = Block(block_mesh, ORIENTATION.SHORT_THIN, (-1, 0, 4) )
         self.assertTrue( not Physics.is_stable(self.block_tower, bad_block))
         if DISPLAY:
-            l = list(self.block_tower._gen_blocks())
+            l = list(self.block_tower.gen_blocks())
             display_colored([b.render() for b in l] + [bad_block.render()],
                             ['gray']*len(l) + ['blue'],
                             [b.get_aggregate_cog() for b in l] + [bad_block.get_aggregate_cog()]
@@ -329,7 +334,7 @@ class Physics_Test(TestCase):
 
         self.assertTrue( Physics.is_stable(self.block_tower, good_block))
         if DISPLAY:
-            l = list(self.block_tower._gen_blocks())
+            l = list(self.block_tower.gen_blocks())
             display_colored([b.render() for b in l] + [good_block.render()],
                             ['gray']*len(l) + ['blue'],
                             [b.get_aggregate_cog() for b in l] + [good_block.get_aggregate_cog()]
@@ -344,7 +349,7 @@ class Physics_Test(TestCase):
         self.assertTrue(True or result)
         print(result)
         if DISPLAY:
-            l = list(self.block_tower._gen_blocks())
+            l = list(self.block_tower.gen_blocks())
             display_colored([b.render() for b in l] + [bad_block.render()],
                             ['gray']*len(l) + ['blue'],
                             [b.get_aggregate_cog() for b in l] + [bad_block.get_aggregate_cog()]
@@ -355,6 +360,209 @@ class Physics_Test(TestCase):
 
 
         # self.assertTrue(sel)
+
+    def test_skew_arrangment(self):
+        block1 = Block(block_mesh, (0, 0, 0), (0, 5, 1))
+        block2 = Block(block_mesh, (0, 0, 0), (-2, -11, 1))
+        block3 = Block(block_mesh, 'flat_wide', (-1, -6, 3))
+        tower_state = Tower_State()
+        tower_state.add(block1)
+        tower_state.add(block2)
+        result = Physics.is_stable(tower_state, block3)
+        print(result)
+        tower_state.add(block3)
+        if DISPLAY:
+            meshes = [b.render() for b in tower_state.gen_blocks()]
+            display_colored(meshes, ['red', 'green', 'blue'], [b.get_aggregate_cog() for b in tower_state.gen_blocks()]  )
+
+    def test_auto_generate(self):
+        """
+        Builds a building from some seed, randomly
+        :return:
+        """
+        DISPLAY = False
+        SAVE = False
+        state = Tower_State()
+        floor = state[-1][0]
+
+        son_desc_gen = floor.gen_possible_block_descriptors()
+        son_desc = list(son_desc_gen)
+        some_sons = sample(son_desc, 100)
+        blocks = [Block(block_mesh, orientation, position) for orientation, position in some_sons]
+        if DISPLAY:
+            display([b.render() for b in blocks])
+
+        shuffle(blocks)
+
+        #add blocks to tower in some order, without creating collisions
+        for new_block in blocks:
+            if state.can_add(new_block):
+                state.add(new_block)
+
+        print(state)
+        print ("We're left with {} blocks".format(len(list(state.gen_blocks()))))
+        if DISPLAY:
+            old_meshes = [b.render() for b in state.gen_blocks()]
+            display(old_meshes)
+        i = 0
+        for _ in range(10):
+            current_blocks = set(state.gen_blocks())
+            for block in current_blocks:
+                possible_son_descriptors = list(
+                    block.gen_possible_block_descriptors(limit_len=20,
+                                                         limit_orientation=lambda o: True,
+                                                         random_order= True))
+                shuffle(possible_son_descriptors)
+                for desc in possible_son_descriptors:
+                    if not state.is_bad_block(Block.get_str(desc)):
+                        orientation, position = desc
+                        new_block = Block(block_mesh, orientation, position)
+                        if state.can_add(new_block):
+                            state.add(new_block)
+                        else:
+                            i += 1
+            print("""
+            Size of tower:{}
+            Bad block hashed:{}
+            Num of blocks disqualified:{}""".format(len(list(state.gen_blocks())),
+                                                    len(state._bad_block_hashes),
+                                                    i))
+
+            if DISPLAY:
+                new_meshes = [b.render() for b in filter(lambda b: b not in current_blocks, state.gen_blocks())]
+                old_meshes = [b.render() for b in current_blocks]
+                display_colored(old_meshes + new_meshes, ['gray']*len(old_meshes) + ['c']*len(new_meshes))
+        if SAVE:
+            save_by_orientation(state, "random_wide_tower")
+
+
+        print("{} blocks were found to be illegal".format(i))
+
+        print ("Now we have {} blocks".format(len(list(state.gen_blocks()))))
+
+        print(state.get_orientation_vector())
+        if DISPLAY:
+            old_meshes = [b.render() for b in state.gen_blocks()]
+            display(old_meshes)
+            display_colored(old_meshes, ['gray']*len(old_meshes), [b.get_aggregate_cog() for b in state.gen_blocks() ])
+
+    def test_attempt_symetry(self):
+        """
+        Builds a building from some seed, randomly
+        :return:
+        """
+        DISPLAY = True
+        SAVE = True
+        state = Tower_State(500)
+        floor = state[-1][0]
+        thresh = 2
+
+        son_desc_gen = floor.gen_possible_block_descriptors()
+        son_desc = list(son_desc_gen)
+        some_sons = sample(son_desc, 300)
+        blocks = [Block(block_mesh, orientation, position) for orientation, position in some_sons]
+        if DISPLAY:
+            display([b.render() for b in blocks])
+
+        shuffle(blocks)
+        def propogate(father_block, dist=9):
+            if father_block.orientation in [(90, 0, 0), (90, 0, 90)]:
+                dist = dist // 2
+
+            #add blocks to tower in some order, without creating collisions
+            minus = [-1, 1, -1, 1]
+            tinus = [-1, -1, 1, 1]
+
+            # Create i identical blocks
+            positions = []
+            for i in range(4):
+                positions.append((father_block.position[X] + minus[i] * dist,
+                                  father_block.position[Y] + tinus[i] * dist,
+                                  father_block.position[Z]))
+            # print(positions)
+            blocks = [Block(block_mesh, father_block.orientation, new_posish) for new_posish in positions]
+            return blocks
+
+        def force_sym(potential_blocks):
+            for new_block in potential_blocks:
+                p = propogate(new_block)
+                good_blocks = []
+                for i, b in enumerate(p):
+                    if state.can_add(b):
+                        good_blocks.append(i)
+                if len(good_blocks) >= thresh:
+                    for i in good_blocks:
+                        state.add(p[i])
+                else: # we're not adding these blocks, so we need to give up on them
+                    for i in good_blocks:
+                        p[i].disconnect()
+
+        force_sym(blocks)
+
+
+        print(state)
+        print ("We're left with {} blocks".format(len(list(state.gen_blocks()))))
+        if DISPLAY:
+            old_meshes = [b.render() for b in state.gen_blocks()]
+            display(old_meshes)
+        counter = 0
+        bad_desc_c = 0
+        for _ in range(0):
+            current_blocks = set(state.gen_blocks())
+            for block in current_blocks:
+                possible_son_descriptors = list(
+                    block.gen_possible_block_descriptors(limit_len=100,
+                                                         limit_orientation=lambda o: True,
+                                                         random_order= True))
+                shuffle(possible_son_descriptors)
+                for desc in possible_son_descriptors:
+                    if not state.is_bad_block(Block.get_str(desc)):
+                        orientation, position = desc
+                        new_block = Block(block_mesh, orientation, position)
+                        p = propogate(new_block)
+                        good_blocks = []
+                        for i, b in enumerate(p):
+                            if state.can_add(b):
+                                good_blocks.append(i)
+                            else:
+                                counter += 1
+                        if len(good_blocks) >= thresh:
+                            for i in good_blocks:
+                                state.add(p[i])
+                        else:  # we're not adding these blocks, so we need to give up on them
+                            for i in good_blocks:
+                                p[i].disconnect()
+                    else:
+                        bad_desc_c += 1
+
+            print("""
+            Size of tower:{}
+            Bad block hashed:{}
+            Num of blocks disqualified:{}""".format(len(list(state.gen_blocks())),
+                                                    len(state._bad_block_hashes),
+                                                    counter))
+
+            if DISPLAY:
+                new_meshes = [b.render() for b in filter(lambda b: b not in current_blocks, state.gen_blocks())]
+                old_meshes = [b.render() for b in current_blocks]
+                display_colored(old_meshes + new_meshes, ['gray']*len(old_meshes) + ['c']*len(new_meshes))
+        if SAVE:
+            save_by_orientation(state, "super_wide_tower")
+
+
+        print("{} blocks were found to be illegal".format(counter))
+
+        print ("Now we have {} blocks".format(len(list(state.gen_blocks()))))
+
+        print(state.get_orientation_vector())
+        if DISPLAY:
+            old_meshes = [b.render() for b in state.gen_blocks()]
+            display(old_meshes)
+            display_colored(old_meshes, ['gray']*len(old_meshes), [b.get_aggregate_cog() for b in state.gen_blocks() ])
+
+
+
+
 
 
 
