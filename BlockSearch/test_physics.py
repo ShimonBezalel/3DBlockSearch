@@ -453,21 +453,30 @@ class Physics_Test(TestCase):
         """
         DISPLAY = True
         SAVE = True
-        state = Tower_State(500)
+        state = Tower_State(50)
         floor = state[-1][0]
         thresh = 2
 
         son_desc_gen = floor.gen_possible_block_descriptors()
         son_desc = list(son_desc_gen)
-        some_sons = sample(son_desc, 300)
+        some_sons = sample(son_desc, 3)
         blocks = [Block(block_mesh, orientation, position) for orientation, position in some_sons]
         if DISPLAY:
             display([b.render() for b in blocks])
 
         shuffle(blocks)
-        def propogate(father_block, dist=9):
+        def propogate(father_block, dist=6):
             if father_block.orientation in [(90, 0, 0), (90, 0, 90)]:
-                dist = dist // 2
+                dist_x = dist // 2
+                dist_y = dist // 2
+
+            elif father_block.orientation in [(0, 90, 0), (0, 0, 0)]:
+                dist_x = dist
+                dist_y = dist * 2
+
+            else:
+                dist_x = dist * 2
+                dist_y = dist
 
             #add blocks to tower in some order, without creating collisions
             minus = [-1, 1, -1, 1]
@@ -476,8 +485,8 @@ class Physics_Test(TestCase):
             # Create i identical blocks
             positions = []
             for i in range(4):
-                positions.append((father_block.position[X] + minus[i] * dist,
-                                  father_block.position[Y] + tinus[i] * dist,
+                positions.append((father_block.position[X] + minus[i] * dist_x,
+                                  father_block.position[Y] + tinus[i] * dist_y,
                                   father_block.position[Z]))
             # print(positions)
             blocks = [Block(block_mesh, father_block.orientation, new_posish) for new_posish in positions]
@@ -507,7 +516,7 @@ class Physics_Test(TestCase):
             display(old_meshes)
         counter = 0
         bad_desc_c = 0
-        for _ in range(0):
+        for _ in range(10):
             current_blocks = set(state.gen_blocks())
             for block in current_blocks:
                 possible_son_descriptors = list(

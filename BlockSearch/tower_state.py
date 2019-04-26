@@ -3,6 +3,7 @@ from BlockSearch.block import Block, Floor, ORIENTATIONS
 from BlockSearch import physics as Physics
 from stl import mesh
 from typing import List, Set, Dict, Tuple, Optional, Generator
+import numpy as np
 
 
 
@@ -92,6 +93,8 @@ class Tower_State(Grid):
         return meshes
 
     def get_orientation_vector(self):
+        s = sum(self._orientation_counter.values())
+        return np.array(self._orientation_counter.values())
         return self._orientation_counter
 
 
