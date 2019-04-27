@@ -32,6 +32,8 @@ class Grid:
         assert hasattr(targets, '__iter__'), "targets must come as a list"
 
         self.targets = targets
+        self.pieces = list()
+        self.hubs = ()
         mins, maxs = np.min(targets, axis=0), np.max(targets, axis=0)
         i_min, i_max = mins[Grid.I], maxs[Grid.I]
         j_min, j_max = mins[Grid.J], maxs[Grid.J]

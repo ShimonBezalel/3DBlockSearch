@@ -3,26 +3,30 @@ from copy import copy, deepcopy
 import numpy as np
 from stl import mesh
 
-from hub import Hub
-from orientation import Orientation, orient_mesh
+import hub
+from orientation import Orientation, orient_mesh, LOCAL_FRONT, LOCAL_BACK
 
+PIECE_MESH = mesh.Mesh.from_file("stl/piece.stl")
 
 class Piece:
 
-    def __init__(self, rotation=np.array((0,0,0)), position=np.array((0,0,0)), piece_mesh=mesh.Mesh.from_file("stl/piece.stl")):
+    def __init__(self, orientation=None, rotation=np.array((0,0,0)), position=np.array((0,0,0)), piece_mesh=PIECE_MESH):
         """
-        :param piece_mesh: Object defining shape of piece for rendering, will be DEEP COPIED
-        :param rotation: tuple of rotations on X, Y and Z axis, in degrees
+        :param piece_mesh:  Object defining shape of piece for rendering, will be DEEP COPIED
+        :param orientation: Orientation object, if given - rotation is ignored.
+        :param rotation:    tuple of rotations on X, Y and Z axis, in degrees
                             (90 , 180 , 0) means rotate 90 degrees in x and 180 degrees in y and 0 in z axis
+                            IGNORED if orientation is given
         :param position: a tuple (x,y,z) of position in space.
         """
-
+        if orientation:
+            rotation = orientation.to_rotation()
         self.rotation = rotation
         self.position = position
         self.mesh = deepcopy(piece_mesh)
-        self.end1 = Hub(htype=Hub.TYPE_END_1, parent=self, parent_local_face=Orientation.FRONT)
-        self.end2 = Hub(htype=Hub.TYPE_END_2, parent=self, parent_local_face=Orientation.BACK)
-        self.center = Hub(htype=Hub.TYPE_CENTER, parent=self)
+        self.end1 = hub.Hub(htype=hub.TYPE_END_1, parent=self, parent_local_face=LOCAL_FRONT)
+        self.end2 = hub.Hub(htype=hub.TYPE_END_2, parent=self, parent_local_face=LOCAL_BACK)
+        self.center = hub.Hub(htype=hub.TYPE_CENTER, parent=self)
         orient_mesh(self.mesh, self.rotation, self.position)
 
     def get_mesh(self):
