@@ -4,12 +4,12 @@ In search.py, you will implement generic search algorithms
 #import sys
 import heapq
 
-import util
+from BlockSearch import util as util
 
-STATE_INDEX = 0
-ACTION_INDEX = 1
-COST_INDEX = 2
-HEUR_INDEX = 3
+STATE_INDEX     = 0
+ACTION_INDEX    = 1
+COST_INDEX      = 2
+HEUR_INDEX      = 3
 
 class SearchProblem:
     """

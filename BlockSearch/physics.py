@@ -7,7 +7,6 @@ from stl import mesh
 from BlockSearch.block          import Block
 from typing                     import List, Set, Dict, Tuple, Optional
 from BlockSearch.render         import display_board
-from BlockSearch.tower_state    import Tower_State
 
 X = 0
 Y = 1
@@ -18,7 +17,7 @@ DEBUG = False
 
 FLOOR_LEVEL = 1
 
-def is_stable(tower_state: Tower_State, new_block : Block):
+def is_stable(tower_state, new_block : Block):
     """
     Boolean recursive function that calculates if the new block to be places in the
     scheme of the current block state will stand, or topple.
@@ -31,19 +30,23 @@ def is_stable(tower_state: Tower_State, new_block : Block):
     block_state = tower_state.get_blocks_by_top_level()
 
     # Initiate the relation to surrounding blocks in the tower
-    if (bottom_level - 1) in block_state:
-        new_block.set_blocks_below(calculate_below(new_block, block_state[bottom_level - 1]))
-    new_block.set_blocks_above(calculate_above(new_block, block_state))
+    # Short-circuit the expensive calculation if can be skipped.
+    blocks_below = calculate_below(new_block, block_state[bottom_level - 1]) \
+        if (bottom_level - 1) in block_state \
+        else set()
+    tower_state.set_blocks_below(new_block, blocks_below)
+    blocks_above = calculate_above(new_block, block_state)
+    tower_state.set_blocks_above(new_block, blocks_above)
 
     # Last attempt to find if this situation was already stored as a unstable combination
     if tower_state.is_bad_block(tower_state.stringify_block_neighbors(new_block)):
         return False
 
     # connect the new block to the blocks above and below by making changes to their neighbor setting.
-    new_block.connect()
+    # new_block.connect()
+    tower_state.connect(new_block)
 
     if is_stable_helper((tower_state, new_block)):
-        new_block.confirm()  # todo may be wrong place
         return True
     else:
         # We can stringify this block's failure, contingent on it's neighbors.
@@ -51,7 +54,7 @@ def is_stable(tower_state: Tower_State, new_block : Block):
         tower_state.add_bad_block_state(new_block)
 
         # release the relation of this block on it neighbors
-        new_block.disconnect()
+        tower_state.disconnect(new_block)
         return False
 
 @memoized
@@ -68,8 +71,9 @@ def is_stable_helper(arg):
         return True
 
     # Initiate the support block list. Assumed to exist
-    blocks_below: Set[Block] = new_block.get_blocks_below()
-    blocks_above: Set[Block] = new_block.get_blocks_above()
+    blocks_below: Set[Block] = tower_state.get_blocks_below(new_block)
+    blocks_above: Set[Block] = tower_state.get_blocks_above(new_block)
+
 
     if DEBUG:
         display_board(block_state, list(blocks_below), new_block)
@@ -80,7 +84,7 @@ def is_stable_helper(arg):
     if blocks_below != []:
 
         # The aggregate center of gravity will take into consideration any support from above
-        center_x, center_y, center_z = new_block.get_aggregate_cog()
+        center_x, center_y, center_z = new_block.get_aggregate_cog(tower_state)
 
         # We iterate twice over to compare within every two combinations of blocks, without order being important
         for i, block1 in enumerate(blocks_below):
@@ -100,7 +104,7 @@ def is_stable_helper(arg):
                 # At least one pair of support blocks is enough
                 supported = False
                 for cog in COG_candidates:
-                    supported |= cog in block1.get_spread(block2)
+                    supported |= cog in tower_state.get_spread(block1, block2)
 
                 if supported:
 
@@ -150,7 +154,7 @@ def calculate_below(block : Block, blocks : List[Block]) -> Set[Block]:
                 break
     return supports
 
-def calculate_above(block : Block, block_state : Tower_State or dict[int : List[Block]]) -> Set[Block]:
+def calculate_above(block : Block, block_state) -> Set[Block]:
     """
     Calculated which of a given blocks are strictly above this given sample block.
     :param block: a single block with a bottom level L
@@ -195,7 +199,7 @@ def combine(meshes):
 #     # def is_stable(block_state: Dict[float or int, List[Block]], new_block : Block):
 #
 #     @staticmethod
-#     def is_stable(tower_state: Tower_State, new_block : Block):
+#     def is_stable(tower_state, new_block : Block):
 #         """
 #         Boolean recursive function that calculates if the new block to be places in the
 #         scheme of the current block state will stand, or topple.
@@ -240,7 +244,7 @@ def combine(meshes):
 #
 #
 #     @staticmethod
-#     def is_stable_helper(tower_state: Tower_State, new_block: Block):
+#     def is_stable_helper(tower_state, new_block: Block):
 #         bottom_level = new_block.get_bottom_level()
 #         # top_level = new_block.get_top_level()
 #         block_state = tower_state.get_blocks_by_top_level()
@@ -380,7 +384,7 @@ def combine(meshes):
 #     def combine(meshes):
 #         return mesh.Mesh(np.concatenate([m.data for m in meshes]))
 
-def is_overlapping(block_tower : Tower_State, new_block : Block):
+def is_overlapping(block_tower , new_block : Block):
     """
     Check if new block clashes (physically overlaps) with the rest of the block tower
     :param block_tower: A tower state

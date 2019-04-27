@@ -33,7 +33,7 @@ new_color       = (0, 0, 1)
 emphasis_color  = (1, 0, 0)
 matte_color     = (0.8, 0.8, 0.8)
 
-GRID = False #True # on
+GRID = False  #True # on
 
 
 def save(meshes, subfolder="default"):
@@ -48,6 +48,16 @@ def save_by_orientation(tower_state, subfolder="default"):
     by_orientation = []
     for orientation in ORIENTATIONS.values():
         meshes = [b.render() for b in filter(lambda b: b.orientation == orientation, tower_state.gen_blocks())]
+        if meshes:
+            single_mesh = combine(meshes)
+            by_orientation.append(single_mesh)
+
+    save(by_orientation, subfolder)
+
+def save_by_orientation_blocks(blocks, subfolder="default"):
+    by_orientation = []
+    for orientation in ORIENTATIONS.values():
+        meshes = [b.render() for b in filter(lambda b: b.orientation == orientation, blocks)]
         if meshes:
             single_mesh = combine(meshes)
             by_orientation.append(single_mesh)
@@ -214,7 +224,8 @@ def display_board(board_state : dict, support_blocks : list, new_block):
     for block_list in board_state.values():
         blocks += list(filter(lambda b: b not in support_blocks + [new_block], block_list))
     meshes = [b.render() for b in blocks] + [b.render() for b in support_blocks] + [new_block.render()]
-    cogs = [b.get_aggregate_cog() for b in blocks] + [b.get_aggregate_cog() for b in support_blocks] + [new_block.get_aggregate_cog()]
+    cogs = [b.get_aggregate_cog() for b in blocks] + [b.get_aggregate_cog() for b in support_blocks] + [
+        new_block.get_aggregate_cog()]
     colors = ([matte_color] * len(blocks)) + ([emphasis_color] * len(support_blocks)) + [new_color]
     display_colored(meshes, colors, cogs)
 

@@ -4,12 +4,14 @@ from stl import mesh
 from BlockSearch.render import *
 from matplotlib.colors import to_rgba
 import time
+# from BlockSearch.tower_state import Tower_State
+from pprint import pprint as pp
 
 DISPLAY = True  # False
 block_mesh = mesh.Mesh.from_file('kapla.stl')
 floor_mesh = mesh.Mesh.from_file('floor.stl')
 
-from pprint import pprint as pp
+
 class Block_Test(TestCase):
 
     def test_constructor(self):
@@ -110,107 +112,6 @@ class Block_Test(TestCase):
         if DISPLAY:
             display_multiple_grids([block.get_cover_cells() for block in blocks])
 
-    def test_spread(self):
-        #same orientation
-        orientation = 'tall_wide'
-        block1 = Block(block_mesh, orientation, (0, 0, 0))
-        block2 = Block(block_mesh, orientation, (2, 1, 0))
-
-        spread = block1.get_spread(block2)
-        if DISPLAY:
-            display([block1.render(), block2.render()])
-            display_multiple_cells([block1.get_cells(), block2.get_cells()], scale=20)
-            display_multiple_grids([block1.get_cover_cells(), block2.get_cover_cells(), spread], scale=20)
-
-        orientation = 'short_wide'
-        block1 = Block(block_mesh, orientation, (0, 0, 0))
-        block2 = Block(block_mesh, orientation, (5, 5, 0))
-
-        spread = block1.get_spread(block2)
-        if DISPLAY:
-            display([block1.render(), block2.render()])
-            display_multiple_cells([block1.get_cells(), block2.get_cells()], scale=20)
-            display_multiple_grids([block1.get_cover_cells(), block2.get_cover_cells(), spread], scale=20)
-
-        orientation = 'flat_thin'
-        block1 = Block(block_mesh, orientation, ( 0,  0, 0))
-        block2 = Block(block_mesh, orientation, (10, 10, 0))
-
-        spread = block1.get_spread(block2)
-        if DISPLAY:
-            display([block1.render(), block2.render()])
-            display_multiple_cells([block1.get_cells(), block2.get_cells()], scale=20)
-            display_multiple_grids([block1.get_cover_cells(), block2.get_cover_cells(), spread], scale=20)
-
-        # differing orientations - must have same top level
-        block1 = Block(block_mesh, 'flat_wide', ( 0,  0, 0))
-        block2 = Block(block_mesh, 'tall_thin', ( 5, 3, -7))
-
-        spread = block1.get_spread(block2)
-        if DISPLAY:
-            display([block1.render(), block2.render()])
-            display_multiple_cells([block1.get_cells(), block2.get_cells()], scale=20)
-            display_multiple_grids([block1.get_cover_cells(), block2.get_cover_cells(), spread], scale=20)
-
-        block1 = Block(block_mesh, 'flat_wide', ( 0,  0, 1))
-        block2 = Block(block_mesh, 'short_thin', ( -10, 3, 0))
-
-        spread = block1.get_spread(block2)
-        if DISPLAY:
-            display([block1.render(), block2.render()])
-            display_multiple_cells([block1.get_cells(), block2.get_cells()], scale=20)
-            display_multiple_grids([block1.get_cover_cells(), block2.get_cover_cells(), spread], scale=20)
-
-
-        # test commutative quality of spread: ie. my spread with you is the same as yours spread with me.
-        block1 = Block(block_mesh, 'flat_wide', ( 0,  0, 1))
-        block2 = Block(block_mesh, 'short_thin', ( -15, 5, 0))
-
-        spread1 = block1.get_spread(block2)
-        spread2 = block1.get_spread(block2)
-
-        self.assertEqual(spread1, spread2)
-
-        if DISPLAY:
-            display([block1.render(), block2.render()])
-            display_multiple_cells([block1.get_cells(), block2.get_cells()], scale=20)
-            display_multiple_grids([block1.get_cover_cells(), block2.get_cover_cells(), spread1, spread2], scale=20)
-
-        block1 = Block(block_mesh, (0, 0, 0), (0, 5, 1))
-        block2 = Block(block_mesh, (0, 0, 0), (-2, -11, 1))
-        block3 = Block(block_mesh, 'flat_wide', (-1, -6, 3))
-        block1.set_blocks_above({block3})
-        block2.set_blocks_above({block3})
-        spread = block1.get_spread(block2)
-
-        if DISPLAY:
-            display([block1.render(), block2.render()])
-            display_multiple_cells([block1.get_cells(), block2.get_cells()], scale=20)
-            display_multiple_grids([block1.get_cover_cells(), block2.get_cover_cells(), spread], scale=20)
-
-        block1 = Block(block_mesh, (0, 0, 0), (0, 9, 1))
-        block2 = Block(block_mesh, (0, 0, 0), (-2, -13, 1))
-        block3 = Block(block_mesh, 'flat_wide', (-1, -6, 3))
-        block1.set_blocks_above({block3})
-        block2.set_blocks_above({block3})
-        spread = block1.get_spread(block2)
-
-        if DISPLAY:
-            display([block1.render(), block2.render()])
-            display_multiple_cells([block1.get_cells(), block2.get_cells()], scale=20)
-            display_multiple_grids([block1.get_cover_cells(), block2.get_cover_cells(), spread], scale=20)
-
-        block1 = Block(block_mesh, 'short_thin', (-8, -1, 1))
-        block2 = Block(block_mesh, 'short_thin', (7, 1, 1))
-        block3 = Block(block_mesh, 'flat_wide', (0, 0, 3))
-        block1.set_blocks_above({block3})
-        block2.set_blocks_above({block3})
-        spread = block1.get_spread(block2)
-
-        if DISPLAY:
-            display([block1.render(), block2.render()])
-            display_multiple_cells([block1.get_cells(), block2.get_cells()], scale=20)
-            display_multiple_grids([block1.get_cover_cells(), block2.get_cover_cells(), spread], scale=20)
 
     def test_mesh(self):
         block1 = Block(block_mesh, (0, 0, 0), ( 0,  0, 0))
@@ -365,6 +266,47 @@ class Block_Test(TestCase):
             b = Block(block_mesh, desc[0], desc[1])
         ee = time.time() - ss
         print("Time to spawn {} Blocks: {}".format(len(all_desc), ee))
+
+    def test_inertia(self):
+        block1 = Block(block_mesh, (0,0,0,), (0,0,0))
+        pp(block1.render().get_mass_properties())
+        blocks = []
+        for orientation in ORIENTATIONS:
+            block1 = Block(block_mesh, orientation, (0, 0, 0))
+            print(orientation)
+            pp(block1.render().get_mass_properties())
+            blocks.append(block1)
+
+        m = combine([b.render() for b in blocks])
+        print("all")
+        pp(m.get_mass_properties())
+
+        # inertia of tall tower
+        blocks = [Block(block_mesh, 'tall_thin', (0, 0, i*15)) for i in range(1)]
+        m  = combine([b.render() for b in blocks])
+        print("Tall tower")
+        pp(m.get_mass_properties())
+        if DISPLAY:
+            display([m])
+
+        # inertia of wide (Y) tower
+        blocks = [Block(block_mesh, 'short_thin', (i*15, 0, 0)) for i in range(10)]
+        m  = combine([b.render() for b in blocks])
+        print("inertia of wide (Y) tower")
+        pp(m.get_mass_properties())
+        if DISPLAY:
+            display([m])
+
+        # inertia of T shape tower
+        blocks = [Block(block_mesh, 'short_thin', (0, 0, 0))] + \
+                [Block(block_mesh, 'flat_wide', (i, 0, 2)) for i in range(-5, 5)]
+
+        m  = combine([b.render() for b in blocks])
+        print("inertia of T shape tower")
+        pp(m.get_mass_properties())
+        if DISPLAY:
+            display([m])
+
 
 
 

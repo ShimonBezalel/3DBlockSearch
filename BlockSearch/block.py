@@ -1,9 +1,8 @@
 from copy import deepcopy
 from enum import Enum
 from random import shuffle
-
+from pprint import pprint as pp
 from memoized import memoized
-
 from BlockSearch.piece import Piece
 import math
 import numpy as np
@@ -115,43 +114,6 @@ class Block (Piece):
         for i, translation_obj in enumerate([self._rendered_mesh.x, self._rendered_mesh.y, self._rendered_mesh.z]):
             translation_obj += self.position[i]
 
-
-    def get_blocks_below(self) -> Set['Block']:
-        """
-        Returns a list of the blocks placed strictly under this block, which are supporting it
-        :return: An empty list if no blocks are defined.
-        """
-        return self._blocks_below_me
-
-    def set_blocks_below(self, blocks: Set['Block']):
-        """
-        Permanently links this block to a set of blocks strictly under it, which support it in the air.
-        The scheme is assumed to be stable.
-
-        X - Segment of this block
-        S - Support blocks
-        N - Non support blocks
-
-                        Front View      |            Side View     |          Top View
-                        ----------------------------------------------------------------------
-                            XXXXXX      |                X         |      NNNNNN
-                        N    S   S      |       NNNNNN SSSSSS      |
-                                        |                          |                X
-                                        |                          |              SSXSSS
-                                        |                          |                X
-                                        |                          |              SSXSSS
-
-        :param blocks: A list of existing blocks to link as supports
-        :return:
-        """
-        self._blocks_below_me = blocks
-
-    def get_blocks_above(self) -> Set['Block']:
-        return self._block_above_me
-
-    def set_blocks_above(self, blocks : Set['Block']):
-        self._block_above_me = blocks
-
     def get_cog(self):
         """
         Returns this blocks center of gravity as a point
@@ -159,13 +121,14 @@ class Block (Piece):
         """
         return self._cog
 
-    def get_aggregate_cog(self):
+    def get_aggregate_cog(self, state):
         """
         Returns the center of gravity for all the blocks above this (recursively), included this block
+        :param state:
         :return:
         """
         if self._aggregate_cog is None:
-            self.get_aggregate_mesh()
+            self.get_aggregate_mesh(state)
         return self._aggregate_cog
 
     def is_perpendicular(self, other : Piece):
@@ -184,81 +147,6 @@ class Block (Piece):
         """
         # todo: improve time!
         return (self.get_cells() & other.get_cells()) != set()
-
-    def get_spread(self, other: 'Block'):
-        """
-        Retrieves the space between two blocks that can support blocks above, should their center of gravity
-        sit within them.
-
-        Spread should only be calculated between blocks that have already been recognized as close enough to hold
-        another block above them, otherwise behavior is not defined, or in the best case an assertion will fail.
-        This is garenteed by only calling get_spread on blocks both directly under the same piece.
-        :param other:
-        :return:
-        """
-        assert self.get_top_level() == other.get_top_level()
-
-        if other is self:
-            return self.get_cover_cells()
-
-        if other in self._spreads_memory:
-            return self._spreads_memory[other]
-
-        my_cover_x =    {cell[X] for cell in self.get_cover_cells()}
-        other_cover_x = {cell[X] for cell in other.get_cover_cells()}
-
-        my_cover_y =    {cell[Y] for cell in self.get_cover_cells()}
-        other_cover_y = {cell[Y] for cell in other.get_cover_cells()}
-
-        inter_x = my_cover_x & other_cover_x
-        inter_y = my_cover_y & other_cover_y
-
-        spread = set()
-        if (inter_x):
-            union_y = my_cover_y | other_cover_y
-            min_y = int(min(union_y))
-            max_y = int(max(union_y))
-            for y in range(min_y, max_y + 1):
-                for x in inter_x:
-                    spread.add((x, y))
-
-        elif (inter_y):
-            union_x = my_cover_x | other_cover_x
-            min_x = int(min(union_x))
-            max_x = int(max(union_x))
-            for x in range(min_x, max_x + 1):
-                for y in inter_y:
-                    spread.add((x, y))
-
-        else: # no common pieces - skew lines
-            """
-                                                    X                   XXXXXXX
-            XXXXXXX                                 X                               X
-                                            or              X       or              X
-                    XXXXXXXX                                X                       X
-                        
-            
-            Relevant for flat pieces only.
-            """
-            pass
-        spread |= self.get_cover_cells()
-        spread |= other.get_cover_cells()
-        candidate_blocks = self.get_blocks_above() & other.get_blocks_above()
-
-        if candidate_blocks:
-            flat_block = candidate_blocks.pop()
-            # if DEBUG:
-            #     display([self.render(), other.render(), flat_block.render()])
-            # assert (flat_block.orientation in (ORIENTATIONS['flat_thin'], ORIENTATIONS['flat_wide']))
-            center_x, center_y, _ = tuple(flat_block.get_cog())
-            skew_center = set()
-            for cell in spread:
-                new_cell = ((cell[X] + center_x)//2, (cell[Y] + center_y)//2)
-                skew_center.add(new_cell)
-            spread |= skew_center
-        self._spreads_memory[other] = spread
-        other._set_spread(self, spread)
-        return spread
 
     def get_bottom_level(self) -> int:
         """
@@ -283,14 +171,6 @@ class Block (Piece):
     def get_cells(self) -> Set[Tuple[int, int, int]]:
         return self._cells
 
-    def is_placed(self) -> bool:
-        """
-        Returns true iff this block has been situated permanently in a block structure
-        :return:
-        """
-        #todo: define what it means to be placed
-        pass
-
     def _init_cells(self):
         """
 
@@ -313,7 +193,6 @@ class Block (Piece):
                 for z in range(-half_height, half_height + 1):
                     self._cells.add((cog[X] + x, cog[Y] + y, cog[Z] + z))
                 self._cover_cells.add((cog[X] + x, cog[Y] + y))
-
 
     def _init_levels(self):
         """
@@ -436,16 +315,24 @@ class Block (Piece):
         return self._str
 
     def __repr__(self):
+        return self._str
         return self._repr
 
     def __hash__(self):
         return self._str.__hash__()
 
-    def __eq__(self, other : 'Block'):
-        return other.__hash__() == self.__hash__()
+    def __eq__(self, other: 'Block'):
+        return str(other) == str(self)
+
+    def __lt__ (self, other: 'Block'):
+        return str(self) < str(other)
+
+    def __gt__(self, other: 'Block'):
+        return str(self) > str(other)
 
     def __copy__(self):
         #TODO: can be made to go faster with some fancy copying
+        return self
         # b = Block(self._original_shape, self.orientation, self.position)
         b = Block()
         b.render_mesh      = self._rendered_mesh
@@ -482,55 +369,41 @@ class Block (Piece):
         assert (neighbor not in self._spreads_memory)
         self._spreads_memory[neighbor] = spread
 
-    def get_aggregate_mesh(self):
+    def get_aggregate_mesh(self, state):
         """
         Returns a mesh of this object and everything above it.
         :return:
         """
         if self._memoized_aggregate:
             return self._memoized_aggregate
-        data = self.get_aggregate_data()
+        data = self.get_aggregate_data(state)
         aggregate = mesh.Mesh(np.concatenate([m.data for m in data]))
         self._memoized_aggregate = aggregate
-        self._aggregate_cog = self._memoized_aggregate.get_mass_properties()[COG]
+        mp = self._memoized_aggregate.get_mass_properties()
+        # if mp[0] != 45:
+        #     pp(mp)
+        self._aggregate_cog = mp[COG]
         self._repr = "U" + self._get_repr()
         return aggregate
 
-    def get_aggregate_data(self):
+    def get_aggregate_data(self, state):
         data = [self._rendered_mesh]
-        if self.get_blocks_above():
-            for block in self.get_blocks_above():
-                data.extend(block.get_aggregate_data())
+        if state.get_blocks_above(self):
+            for block in state.get_blocks_above(self):
+                data.extend(block.get_aggregate_data(state))
         return data
 
     #TODO can memoize block who caused this reset
     # @memoized
-    def reset_aggregate_mesh(self, catalyst : 'Block' = None) -> None:
+    def reset_aggregate_mesh(self, state) -> None:
         """
         Signal to self to update the aggregate mesh of all blocks below me. Some change must have occurred above
         :return:
         """
         self._memoized_aggregate = None
         self._aggregate_cog      = None
-        for block in self.get_blocks_below():
-            block.reset_aggregate_mesh()
-
-    def update_aggregate_mesh(self, new_mesh) -> None:
-        """
-        Deprecated - 100 times slower than reset
-        Signal to self to update the aggregate mesh of all blocks above me. Some change occurred above
-        """
-        meshes = [new_mesh]
-        if self._memoized_aggregate:
-            meshes += [self._memoized_aggregate]
-
-        self._memoized_aggregate = mesh.Mesh(np.concatenate((new_mesh.data, self._memoized_aggregate.data)))
-        self._aggregate_cog      = self._memoized_aggregate.get_mass_properties()[COG]
-        self._repr               = self._get_repr()
-
-        if self.get_blocks_below():
-            for block in self.get_blocks_below():
-                block.update_aggregate_mesh(new_mesh)
+        for block in state.get_blocks_below(self):
+            block.reset_aggregate_mesh(state)
 
     def gen_possible_block_descriptors(self, limit_orientation=lambda o: True, limit_len=60000, random_order=None) -> Generator[tuple, None, None]:
         """
@@ -598,48 +471,6 @@ class Block (Piece):
         orientation, position = descriptor
         return "Block: O{}, P{}".format(str(orientation), str(position))
 
-    def confirm(self):
-        """
-        Make changes made by this block permanent
-        :return:
-        """
-        pass
-
-    def disconnect(self):
-        """
-        Undo changes possibly made by connect
-        :return:
-        """
-        # Reset changes downwards in the block tower  (recursively)
-        #           | | |
-        #           V V V
-        for neighbor_block in self.get_blocks_below():
-            neighbor_block._block_above_me.remove(self)
-
-            # resetting the cog's and aggregate meshes is expensive and may be redundant
-            neighbor_block.reset_aggregate_mesh()
-
-        # Reset changes upwards in the block tower  (1 level)
-        #           ^ ^ ^
-        #           | | |
-        for neighbor_block in self.get_blocks_above():
-            neighbor_block._blocks_below_me.remove(self)
-
-    def connect(self):
-        # Make changes downwards in the block tower  (recursively)
-        #           | | |
-        #           V V V
-        for neighbor_block in self.get_blocks_below():
-            neighbor_block._block_above_me.add(self)
-            neighbor_block.reset_aggregate_mesh()
-
-        # Make changes upwards in the block tower  (1 level)
-        #           ^ ^ ^
-        #           | | |
-        for neighbor_block in self.get_blocks_above():
-            neighbor_block._blocks_below_me.add(self)
-        pass
-
     def render(self):
         """
         Draw the piece
@@ -653,9 +484,13 @@ class Floor(Block):
     def __init__(self, floor_mesh, size=30):
         super().__init__(shape=floor_mesh, orientation=(0, 0, 0 ), position=(0, 0, 0 ))
         self.SHAPE_IN_CELLS = (size, size, 1)
+        self._size = size
         self._init_cells()
         self._init_levels()
         self._str = "Floor: size {}".format(size)
+
+    def get_size(self):
+        return self._size
 
     def __repr__(self):
         return self._str

@@ -324,7 +324,7 @@ class Physics_Test(TestCase):
         if DISPLAY:
             l = list(self.block_tower.gen_blocks())
             display_colored([b.render() for b in l] + [bad_block.render()],
-                            ['gray']*len(l) + ['blue'],
+                            ['gray'] * len(l) + ['blue'],
                             [b.get_aggregate_cog() for b in l] + [bad_block.get_aggregate_cog()]
                             )
 
@@ -336,7 +336,7 @@ class Physics_Test(TestCase):
         if DISPLAY:
             l = list(self.block_tower.gen_blocks())
             display_colored([b.render() for b in l] + [good_block.render()],
-                            ['gray']*len(l) + ['blue'],
+                            ['gray'] * len(l) + ['blue'],
                             [b.get_aggregate_cog() for b in l] + [good_block.get_aggregate_cog()]
                             )
         print("After : " + str(self.block_tower))
@@ -351,7 +351,7 @@ class Physics_Test(TestCase):
         if DISPLAY:
             l = list(self.block_tower.gen_blocks())
             display_colored([b.render() for b in l] + [bad_block.render()],
-                            ['gray']*len(l) + ['blue'],
+                            ['gray'] * len(l) + ['blue'],
                             [b.get_aggregate_cog() for b in l] + [bad_block.get_aggregate_cog()]
                             )
         print("After : " + str(self.block_tower))
@@ -373,21 +373,21 @@ class Physics_Test(TestCase):
         tower_state.add(block3)
         if DISPLAY:
             meshes = [b.render() for b in tower_state.gen_blocks()]
-            display_colored(meshes, ['red', 'green', 'blue'], [b.get_aggregate_cog() for b in tower_state.gen_blocks()]  )
+            display_colored(meshes, ['red', 'green', 'blue'], [b.get_aggregate_cog() for b in tower_state.gen_blocks()])
 
     def test_auto_generate(self):
         """
         Builds a building from some seed, randomly
         :return:
         """
-        DISPLAY = False
+        DISPLAY = True
         SAVE = False
         state = Tower_State()
-        floor = state[-1][0]
+        floor = state[FLOOR_LEVEL][0]
 
         son_desc_gen = floor.gen_possible_block_descriptors()
         son_desc = list(son_desc_gen)
-        some_sons = sample(son_desc, 100)
+        some_sons = sample(son_desc, 50)
         blocks = [Block(block_mesh, orientation, position) for orientation, position in some_sons]
         if DISPLAY:
             display([b.render() for b in blocks])
@@ -444,7 +444,7 @@ class Physics_Test(TestCase):
         if DISPLAY:
             old_meshes = [b.render() for b in state.gen_blocks()]
             display(old_meshes)
-            display_colored(old_meshes, ['gray']*len(old_meshes), [b.get_aggregate_cog() for b in state.gen_blocks() ])
+            display_colored(old_meshes, ['gray'] * len(old_meshes), [b.get_aggregate_cog() for b in state.gen_blocks()])
 
     def test_attempt_symetry(self):
         """
@@ -452,14 +452,14 @@ class Physics_Test(TestCase):
         :return:
         """
         DISPLAY = True
-        SAVE = True
-        state = Tower_State(50)
-        floor = state[-1][0]
-        thresh = 2
+        SAVE = False
+        state = Tower_State(15)
+        floor = state[FLOOR_LEVEL][0]
+        thresh = 1
 
         son_desc_gen = floor.gen_possible_block_descriptors()
         son_desc = list(son_desc_gen)
-        some_sons = sample(son_desc, 3)
+        some_sons = sample(son_desc, 30)
         blocks = [Block(block_mesh, orientation, position) for orientation, position in some_sons]
         if DISPLAY:
             display([b.render() for b in blocks])
@@ -504,7 +504,7 @@ class Physics_Test(TestCase):
                         state.add(p[i])
                 else: # we're not adding these blocks, so we need to give up on them
                     for i in good_blocks:
-                        p[i].disconnect()
+                        state.disconnect(p[i])
 
         force_sym(blocks)
 
@@ -520,7 +520,7 @@ class Physics_Test(TestCase):
             current_blocks = set(state.gen_blocks())
             for block in current_blocks:
                 possible_son_descriptors = list(
-                    block.gen_possible_block_descriptors(limit_len=100,
+                    block.gen_possible_block_descriptors(limit_len=10,
                                                          limit_orientation=lambda o: True,
                                                          random_order= True))
                 shuffle(possible_son_descriptors)
@@ -540,23 +540,26 @@ class Physics_Test(TestCase):
                                 state.add(p[i])
                         else:  # we're not adding these blocks, so we need to give up on them
                             for i in good_blocks:
-                                p[i].disconnect()
+                                state.disconnect(p[i])
                     else:
                         bad_desc_c += 1
 
             print("""
             Size of tower:{}
             Bad block hashed:{}
-            Num of blocks disqualified:{}""".format(len(list(state.gen_blocks())),
+            Num of blocks disqualified:{}
+            Num of blocks rejected at str level:{}""".format(len(list(state.gen_blocks())),
                                                     len(state._bad_block_hashes),
-                                                    counter))
+                                                    counter,
+                                                    bad_desc_c
+                                                             ))
 
             if DISPLAY:
                 new_meshes = [b.render() for b in filter(lambda b: b not in current_blocks, state.gen_blocks())]
                 old_meshes = [b.render() for b in current_blocks]
                 display_colored(old_meshes + new_meshes, ['gray']*len(old_meshes) + ['c']*len(new_meshes))
         if SAVE:
-            save_by_orientation(state, "super_wide_tower")
+            save_by_orientation(state)
 
 
         print("{} blocks were found to be illegal".format(counter))
@@ -567,7 +570,7 @@ class Physics_Test(TestCase):
         if DISPLAY:
             old_meshes = [b.render() for b in state.gen_blocks()]
             display(old_meshes)
-            display_colored(old_meshes, ['gray']*len(old_meshes), [b.get_aggregate_cog() for b in state.gen_blocks() ])
+            display_colored(old_meshes, ['gray'] * len(old_meshes), [b.get_aggregate_cog() for b in state.gen_blocks()])
 
 
 
