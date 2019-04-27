@@ -3,7 +3,7 @@ from copy import copy, deepcopy
 import numpy as np
 from stl import mesh
 
-from display import display_meshes_with_colors
+from display import display_meshes_with_colors, random_color
 from grid import GRID_UNIT_IN_MM
 from orientation import Orientation, orient_mesh, GLOBAL_TOP, GLOBAL_RIGHT, GLOBAL_FRONT, GLOBAL_DOWN, GLOBAL_LEFT, \
     GLOBAL_BACK, LOCAL_FRONT, LOCAL_BACK, LOCAL_TOP, LOCAL_Z_CW
@@ -57,7 +57,9 @@ END_POSITION_SHIFT_BY_GLOBAL_FACE = {GLOBAL_TOP: np.array((0, 0, POSITION_SHIFT)
 class Hub:
 
     def __init__(self, htype, parent,
-                 parent_local_face=None):  # TODO: Solve import problems of Piece, set default parent=Piece()
+                 parent_local_face=None,
+                 color=random_color(),
+                 alpha=0.70):  # TODO: Solve import problems of Piece, set default parent=Piece()
         """
         :param htype: One of discreet hub types
         :param orientation: Orientation object of this hub
@@ -80,7 +82,8 @@ class Hub:
             self.mesh = deepcopy(CENTER_MESH)
 
         self.parent_local_face = parent_local_face
-
+        self.color = color
+        self.alpha = alpha
         orient_mesh(self.mesh, self.rotation, self.position)
 
     def get_mesh(self):
@@ -118,25 +121,54 @@ class Hub:
             (self.htype != TYPE_CENTER and other.htype == TYPE_CENTER):
             return False
 
-        # Compare when translating both so that self is reset
-        global_rotations_towards_reset = self.orientation.get_global_rotations_towards_reset()
-        o = copy(other.orientation)
-        o.rotate_multiple_global_axis(global_rotations_towards_reset)
-
+        global_rotations_from_reset = self.orientation.get_global_rotations_from_reset()
         if self.htype == TYPE_END_1:
+            # Pieces connecting through their END_1
             if other.htype == TYPE_END_1:
-                return o in END_1_TO_INITIAL_END_1_ORIENTATIONS
-            if other.htype == TYPE_END_2:
-                return o in END_2_TO_INITIAL_END_1_ORIENTATIONS
+                for orientation in END_1_TO_INITIAL_END_1_ORIENTATIONS:
+                    orientation = copy(orientation)
+                    # Translate the connection to current orientation of self
+                    orientation.rotate_multiple_global_axis(global_rotations_from_reset)
+                    if other.orientation == orientation:
+                        return True
 
-        if self.htype == TYPE_END_2:
-            if other.htype == TYPE_END_1:
-                return o in END_1_TO_INITIAL_END_2_ORIENTATIONS
-            if other.htype == TYPE_END_2:
-                return o in END_2_TO_INITIAL_END_2_ORIENTATIONS
+            # Pieces connecting through their END_2
+            elif other.htype == TYPE_END_2:
+                for orientation in END_2_TO_INITIAL_END_1_ORIENTATIONS:
+                    orientation = copy(orientation)
+                    # Translate the connection to current orientation of self
+                    orientation.rotate_multiple_global_axis(global_rotations_from_reset)
+                    if other.orientation == orientation:
+                        return True
 
-        if self.htype == TYPE_CENTER: # we already validated in this case they are identical
-            return o in CENTER_TO_INITIAL_CENTER_ORIENTATIONS
+        elif self.htype == TYPE_END_2:
+            # Pieces connecting through their END_2
+            if other.htype == TYPE_END_2:
+                for orientation in END_2_TO_INITIAL_END_2_ORIENTATIONS:
+                    orientation = copy(orientation)
+                    # Translate the connection to current orientation of self
+                    orientation.rotate_multiple_global_axis(global_rotations_from_reset)
+                    if other.orientation == orientation:
+                        return True
+
+            # Pieces connecting through their END_1
+            elif other.htype == TYPE_END_1:
+                for orientation in END_1_TO_INITIAL_END_2_ORIENTATIONS:
+                    orientation = copy(orientation)
+                    # Translate the connection to current orientation of self
+                    orientation.rotate_multiple_global_axis(global_rotations_from_reset)
+                    if other.orientation == orientation:
+                        return True
+
+        elif self.htype == TYPE_CENTER:
+            # Pieces connecting through their END_2
+            for orientation in CENTER_TO_INITIAL_CENTER_ORIENTATIONS:
+                orientation = copy(orientation)
+                # Translate the connection to current orientation of self
+                orientation.rotate_multiple_global_axis(global_rotations_from_reset)
+                if other.orientation == orientation:
+                    return True
+        return False
 
     def get_connectible_pieces(self):
         """
@@ -148,6 +180,7 @@ class Hub:
         if self.htype == TYPE_END_1:
             # Pieces connecting through their END_1
             for orientation in END_1_TO_INITIAL_END_1_ORIENTATIONS:
+                orientation = copy(orientation)
                 # Translate the connection to current orientation of self
                 orientation.rotate_multiple_global_axis(global_rotations_from_reset)
                 # Find global face of this connection
@@ -160,6 +193,7 @@ class Hub:
 
             # Pieces connecting through their END_2
             for orientation in END_2_TO_INITIAL_END_1_ORIENTATIONS:
+                orientation = copy(orientation)
                 # Translate the connection to current orientation of self
                 orientation.rotate_multiple_global_axis(global_rotations_from_reset)
                 # Find global face of this connection
@@ -173,6 +207,7 @@ class Hub:
         elif self.htype == TYPE_END_2:
             # Pieces connecting through their END_2
             for orientation in END_2_TO_INITIAL_END_2_ORIENTATIONS:
+                orientation = copy(orientation)
                 # Translate the connection to current orientation of self
                 orientation.rotate_multiple_global_axis(global_rotations_from_reset)
                 # Find global face of this connection
@@ -185,6 +220,7 @@ class Hub:
 
             # Pieces connecting through their END_1
             for orientation in END_1_TO_INITIAL_END_2_ORIENTATIONS:
+                orientation = copy(orientation)
                 # Translate the connection to current orientation of self
                 orientation.rotate_multiple_global_axis(global_rotations_from_reset)
                 # Find global face of this connection
@@ -198,6 +234,7 @@ class Hub:
         elif self.htype == TYPE_CENTER:
             # Pieces connecting through their END_2
             for orientation in CENTER_TO_INITIAL_CENTER_ORIENTATIONS:
+                orientation = copy(orientation)
                 # Translate the connection to current orientation of self
                 orientation.rotate_multiple_global_axis(global_rotations_from_reset)
                 # Generate matching piece
@@ -217,4 +254,7 @@ class Hub:
         pass
 
     def __str__(self):
-        pass
+        return "{} : {} : {}".format(self.htype, self.position, self.orientation)
+
+    def __repr__(self):
+        return str(self)

@@ -18,7 +18,7 @@ class Grid:
     J = 1
     W = 2
 
-    def __init__(self, targets):
+    def __init__(self, targets=tuple()):
         """
         Initialize a 3D grid with given target coordinates
         :param targets: array of size 3*n of n targets by coordinates
@@ -128,14 +128,14 @@ class Grid:
         shifted_coords = tuple(coordinates - self._mins - 1)
         self._grid[shifted_coords] = voxel
 
-    def add_move(self, move):
+    def add_piece(self, piece):
         """
-        Apply the given move to self.
+        Add the given piece to self.
         This method modifies this grid object.
 
-        :param move:    Move object to apply to this grid.
+        :param piece:    Move object to apply to this grid.
         """
-        # TODO
+        self._grid[piece.position]
         pass
 
     def new_grid_after_move(self, move):
@@ -232,8 +232,14 @@ class Grid:
             axes.add_collection(mplot3d.art3d.Poly3DCollection(mesh.vectors))
 
         # Auto scale to mesh size
-        scale = numpy.concatenat([piece.points for piece in self.pieces]).flatten(-1)
+        scale = np.concatenate([piece.points for piece in self.pieces]).flatten(-1)
         axes.auto_scale_xyz(scale, scale, scale)
 
         # Show the plot to the screen
         pyplot.show()
+
+def position_to_coordinates(position):
+    return np.array(position) / (GRID_UNIT_IN_MM * 1.5)
+
+def coordinates_to_position(coordinates):
+    return tuple(coordinates * GRID_UNIT_IN_MM * 1.5)

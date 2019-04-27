@@ -4,13 +4,15 @@ import numpy as np
 from stl import mesh
 
 import hub
+from display import random_color
 from orientation import Orientation, orient_mesh, LOCAL_FRONT, LOCAL_BACK
 
 PIECE_MESH = mesh.Mesh.from_file("stl/piece.stl")
 
 class Piece:
 
-    def __init__(self, orientation=None, rotation=np.array((0,0,0)), position=np.array((0,0,0)), piece_mesh=PIECE_MESH):
+    def __init__(self, orientation=None, rotation=np.array((0,0,0)), position=np.array((0,0,0)), piece_mesh=PIECE_MESH,
+                 color=None, alpha=0.20):
         """
         :param piece_mesh:  Object defining shape of piece for rendering, will be DEEP COPIED
         :param orientation: Orientation object, if given - rotation is ignored.
@@ -21,12 +23,16 @@ class Piece:
         """
         if orientation:
             rotation = orientation.to_rotation()
+        if not color:
+            color = random_color()
         self.rotation = rotation
         self.position = position
         self.mesh = deepcopy(piece_mesh)
-        self.end1 = hub.Hub(htype=hub.TYPE_END_1, parent=self, parent_local_face=LOCAL_FRONT)
-        self.end2 = hub.Hub(htype=hub.TYPE_END_2, parent=self, parent_local_face=LOCAL_BACK)
-        self.center = hub.Hub(htype=hub.TYPE_CENTER, parent=self)
+        self.end1 = hub.Hub(htype=hub.TYPE_END_1, parent=self, parent_local_face=LOCAL_FRONT, color=color)
+        self.end2 = hub.Hub(htype=hub.TYPE_END_2, parent=self, parent_local_face=LOCAL_BACK, color=color)
+        self.center = hub.Hub(htype=hub.TYPE_CENTER, parent=self, color=color)
+        self.color = color
+        self.alpha = alpha
         orient_mesh(self.mesh, self.rotation, self.position)
 
     def get_mesh(self):
@@ -65,7 +71,10 @@ class Piece:
         pass
 
     def __str__(self):
-        pass
+        return "{} : {}".format(self.position, self.orientation)
+
+    def __repr__(self):
+        return str(self)
 
     def __eq__(self, other):
         pass

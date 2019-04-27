@@ -1,7 +1,7 @@
 from copy import deepcopy, copy
 from unittest import TestCase
 
-from display import display_meshes_with_colors
+from display import display_meshes_with_colors, random_color
 from hub import Hub, TYPE_END_1, TYPE_END_2, TYPE_CENTER
 from piece import Piece
 
@@ -204,9 +204,6 @@ class Test_Hub(TestCase):
         display_meshes_with_colors(meshes, colors)
 
     def test_get_connectible_pieces_all(self):
-        import random
-        r = lambda: random.randint(0, 255)
-        random_color = lambda: '#%02X%02X%02X' % (r(), r(), r())
 
         P = Piece()
         meshes = [P.get_mesh(),]
