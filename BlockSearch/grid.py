@@ -1,245 +1,105 @@
-import numpy as np
+from copy import copy, deepcopy
 
-from matplotlib import pyplot
-from mpl_toolkits import mplot3d
 from stl import mesh
 
+from display import display_meshes_with_colors_and_alphas
+from target import Target
+from voxel import Voxel
+
 GRID_UNIT_IN_MM = 20
-
-
-class Voxel:
-    def __init__(self, is_target=False):
-        self.is_target = is_target
-        self.hubs = [None, None]
-
+GRID_UNIT_WITH_SPACING = 1.5 * GRID_UNIT_IN_MM
+OPEN_HUB_COLOR = "#4455FF"
 
 class Grid:
-    I = 0
-    J = 1
-    W = 2
 
-    def __init__(self, targets=tuple()):
+    def __init__(self, targets=(Target((0,0,0)),)):
         """
-        Initialize a 3D grid with given target coordinates
-        :param targets: array of size 3*n of n targets by coordinates
-                        [[t1_i, t1_j, t1_w],
-                         [t2_i, t2_j, t2_w],
-                         ...
-                         [tn_i, tn_j, tn_w]]
+        Initialize empty grid with targets given in coordinates
+        :param targets: list of tuples [(ci1, cj1, cw1), ... ,(ciN, cjN, cwN)]
         """
-
-        # Verify targets were given as a list (even if single)
-        assert hasattr(targets, '__iter__'), "targets must come as a list"
-
-        self.targets = targets
+        self._grid = dict()
         self.pieces = list()
-        self.hubs = ()
-        mins, maxs = np.min(targets, axis=0), np.max(targets, axis=0)
-        i_min, i_max = mins[Grid.I], maxs[Grid.I]
-        j_min, j_max = mins[Grid.J], maxs[Grid.J]
-        w_min, w_max = mins[Grid.W], maxs[Grid.W]
-        self._grid = np.zeros(shape=(i_max - i_min, j_max - j_min, w_max - w_min), dtype=Voxel)
-        self._mins = mins
-
-        # Init grid with empty voxels
-        for i in range(i_max - i_min):
-            for j in range(j_max - j_min):
-                for w in range(w_max - w_min):
-                    self._grid[i, j, w] = Voxel()
-
-        # Init targets
-        for target in targets:
-            target_voxel = self.get_voxel_at_coords(target)
-            if not target_voxel:
-                self.set_voxel_at_coords(target, Voxel(is_target=True))
-            else:
-                target_voxel.is_target = True
-
-    def get_targets_meshes(self):
-
-        # Create cube mesh for each target
-        cubes = []
-
+        self.targets = targets
+        self.open_hubs = set()
         for target in self.targets:
-            # Create 3 faces of a cube
-            data = np.zeros(6, dtype=mesh.Mesh.dtype)
+            pos = target.position
+            if not (pos in self._grid):
+                self._grid[pos] = Voxel(target=target)
 
-            # Top of the cube
-            data['vectors'][0] = np.array([[0, 1, 1],
-                                           [1, 0, 1],
-                                           [0, 0, 1]])
-            data['vectors'][1] = np.array([[1, 0, 1],
-                                           [0, 1, 1],
-                                           [1, 1, 1]])
-            # Front face
-            data['vectors'][2] = np.array([[1, 0, 0],
-                                           [1, 0, 1],
-                                           [1, 1, 0]])
-            data['vectors'][3] = np.array([[1, 1, 1],
-                                           [1, 0, 1],
-                                           [1, 1, 0]])
-            # Left face
-            data['vectors'][4] = np.array([[0, 0, 0],
-                                           [1, 0, 0],
-                                           [1, 0, 1]])
-            data['vectors'][5] = np.array([[0, 0, 0],
-                                           [0, 0, 1],
-                                           [1, 0, 1]])
-            # Center cube on grid
-            data['vectors'] -= 0.5
+    def remaining_targets(self):
+        return [target for target in self.targets if not target.is_reached]
 
-            # Generate 2 different meshes so we can rotate them later
-            meshes = [mesh.Mesh(data.copy()) for _ in range(2)]
-
-            # meshes[0] is the original half-cube
-            # meshes[1] is rotated to the opposite hald-cube
-            meshes[1].rotate([0, 1, 0], np.deg2rad(180))
-            meshes[1].rotate([0, 0, 1], np.deg2rad(90))
-
-            cube = mesh.Mesh(np.concatenate([m.data for m in meshes]))
-
-            # Scale faces
-            cube.data['vectors'] *= GRID_UNIT_IN_MM
-
-            # Scale coordinates
-            target_coords = np.array(target) * GRID_UNIT_IN_MM * 1.5
-            cube.data['vectors'] += target_coords
-
-            cubes.append(cube)
-            # return the merged mesh-cube
-
-        return cubes
-
-    def get_voxel_at_coords(self, coordinates):
-        """
-        Get the voxel at the given coordinates
-        :param coordinates: tuple (i,j,w)
-        :return: Voxel at the given coordinates on the grid
-        """
-        shifted_coords = tuple(coordinates - self._mins - 1)
-        return self._grid[shifted_coords]  # convert imaginary boundaries to start at (0,0,0)
-
-    def set_voxel_at_coords(self, coordinates, voxel):
-        """
-        Set the voxel at the given coordinates to the given voxel
-        :param coordinates: tuple (i,j,w)
-        :param voxel: Voxel to set at given coordinates
-        """
-        shifted_coords = tuple(coordinates - self._mins - 1)
-        self._grid[shifted_coords] = voxel
 
     def add_piece(self, piece):
-        """
-        Add the given piece to self.
-        This method modifies this grid object.
+        hubs = end1, center, end2 = piece.get_hubs()
+        for hub in hubs:
+            pos = tuple(hub.position)
+            if not (pos in self._grid):
+                self._grid[pos] = Voxel()
+            if not self._grid[pos].is_full():
+                self._grid[pos].add_hub(hub)
+                # The other hub in this voxel is no longer open
+            if self._grid[pos].is_full():
+                self.open_hubs.remove(self._grid[pos].hub1)
+            else:
+                self.open_hubs.add(hub)
+        self.pieces.append(piece)
 
-        :param piece:    Move object to apply to this grid.
-        """
-        self._grid[piece.position]
-        pass
+    def can_add_piece(self, piece):
+        for hub in piece.get_hubs():
+            pos = tuple(hub.position)
+            if not (pos in self._grid) or (self._grid[pos].no_hubs()):
+                # Empty voxel? good
+                continue
+            elif not self._grid[pos].is_full():
+                # Can connect to other hub in the voxel?
+                other = self._grid[pos].hub1
+                if not hub.can_connect(other):
+                    return False
+            else:
+                # Voxel is already full
+                return False
+        return True
 
-    def new_grid_after_move(self, move):
-        """
-        Return a copy of this grid after the given move was applied to it.
-        This method does NOT modify this grid object.
-
-        :param move:    Move object to apply to the copied grid.
-        :return:        A copy of this grid, with the given move applied to it.
-        """
-        # TODO
-        pass
-
-    def get_possible_moves(self):
-        """
-        Returns a list of all the moves possible on the current grid.
-        :return:        List of moves possible on this grid.
-        """
-        # TODO
-        pass
-
-    def check_move_valid(self, move):
-        """
-        Return True if the given move can be legally applied to this grid,
-        otherwise return False.
-
-        :param move:    Move object to try applying to this grid.
-        :return:        True if move possible, otherwise False.
-        """
-        # TODO
-        pass
-
-    def get_voxel_at_position(self, x, y, z):
-        """
-        Return the voxel object at coordinates (x,y,z)
-
-        :param x:   Voxel's X coordinate.
-        :param y:   Voxel's Y coordinate.
-        :param z:   Voxel's Z coordinate.
-        :return:    Voxel object at given coordinates.
-        """
-        # TODO
-        pass
-
-    def __eq__(self, other):
-        """
-        Check if this grid is identical to other.
-        :param other:   Grid object to check if identical.
-        :return:        True if grids contain the same pieces at the same
-                        orientations and positions, otherwise False.
-        """
-        # TODO
-        pass
-
-    def __hash__(self):
-        """
-        Return a lightweight, hashed representation of this grid.
-        :return: Lightweight, hashed representation of this grid.
-        """
-        # TODO
-        pass
-
-    def __str__(self):
-        """
-        Return a string describing this grid.
-        :return: String describing this grid.
-        """
-        # TODO
-        pass
-
-    def __copy__(self):
-        """
-        Return a copy object of this grid, descend into pieces etc.
-        The returned object should:
-            * Have the same __hash__ as ours
-            * Not point to or modify any of our internal objects, ever.
-        :return:
-        """
-        # TODO
-        pass
-
-    def render(self):
-        """
-        Renders all the pieces on the grid.
-        :return:
-        """
-        # Create a new plot
-        figure = pyplot.figure()
-        axes = mplot3d.Axes3D(figure)
-
-        # Render all pieces
+    def display(self, meshes=None, colors=None, alphas=None, all_white=False, scale=100, filename=None):
+        if not meshes:
+            meshes = []
+        else:
+            meshes = copy(meshes)
+        if not colors:
+            colors = []
+        else:
+            colors = copy(colors)
+        if not alphas:
+            alphas = []
+        else:
+            alphas = copy(alphas)
         for piece in self.pieces:
-            mesh = piece.get_mesh()
-            axes.add_collection(mplot3d.art3d.Poly3DCollection(mesh.vectors))
+            meshes.append(piece.get_mesh())
+            if all_white:
+                colors.append('white')
+            else:
+                colors.append(piece.color)
+            alphas.append(piece.alpha)
+            for hub in piece.get_hubs():
+                meshes.append(hub.get_mesh())
+                if hub in self.open_hubs:
+                    colors.append(OPEN_HUB_COLOR)
+                else:
+                    if all_white:
+                        colors.append('white')
+                    else:
+                        colors.append(hub.color)
+                alphas.append(hub.alpha)
+        for target in self.targets:
+            meshes.append(target.get_mesh())
+            colors.append(target.color)
+            alphas.append(target.alpha)
+        display_meshes_with_colors_and_alphas(meshes, colors, alphas, scale=scale, filename=filename)
 
-        # Auto scale to mesh size
-        scale = np.concatenate([piece.points for piece in self.pieces]).flatten(-1)
-        axes.auto_scale_xyz(scale, scale, scale)
-
-        # Show the plot to the screen
-        pyplot.show()
-
-def position_to_coordinates(position):
-    return np.array(position) / (GRID_UNIT_IN_MM * 1.5)
-
-def coordinates_to_position(coordinates):
-    return tuple(coordinates * GRID_UNIT_IN_MM * 1.5)
+    def display_with_candidate(self, candidate_piece, scale=None, filename=None):
+        meshes = [candidate_piece.get_mesh(), ]
+        color = 'green' if self.can_add_piece(candidate_piece) else 'red'
+        colors = [color, ]
+        alphas = [candidate_piece.alpha]
+        self.display(meshes, colors, alphas, all_white=True, scale=scale, filename=filename)

@@ -82,6 +82,10 @@ def generic_first_search(problem, fringe):
         for child, action, _ in problem.get_successors(state):
             if child not in backtrace:
                 backtrace[child] = (state, action)
+
+                if problem.is_goal_state(child):
+                    return construct_path(child, backtrace)
+
                 fringe.push(child)
     raise Exception("There is no solution for this problem")
 

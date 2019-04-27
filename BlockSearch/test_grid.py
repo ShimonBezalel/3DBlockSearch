@@ -1,7 +1,7 @@
 from unittest import TestCase
 
 import piece
-from dgrid import Grid
+from grid import Grid
 from target import Target
 
 

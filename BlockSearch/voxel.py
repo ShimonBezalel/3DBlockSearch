@@ -22,7 +22,7 @@ class Voxel:
         Returns true if no further hubs can be added to this voxel.
         :return:
         """
-        return self.hub2 != None
+        return self.hub1 != None and self.hub2 != None
 
     def get_hubs(self):
         """
@@ -30,3 +30,6 @@ class Voxel:
         :return:
         """
         return self.hub1, self.hub2
+
+    def no_hubs(self):
+        return (not self.hub1) and (not self.hub2)

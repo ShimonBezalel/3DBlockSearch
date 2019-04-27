@@ -12,6 +12,8 @@ DISPLAY = True
 r = lambda: random.randint(0, 255)
 random_color = lambda: '#%02X%02X%02X' % (r(), r(), r())
 
+FIGURE = pyplot.figure()
+
 def display_parts(pieces):
     if not DISPLAY:
         return
