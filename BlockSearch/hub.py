@@ -20,17 +20,17 @@ END_1_TO_INITIAL_END_1_ORIENTATIONS = {Orientation(rotation=(0, 180, 90)),
                                        Orientation(rotation=(180, 90, 0)),
                                        Orientation(rotation=(270, 0, 180))}
 
-END_2_TO_INITIAL_END_2_ORIENTATIONS = {Orientation(rotation=(90, 0, 180)),
-                                       Orientation(rotation=(0, 180, 90)),
-                                       Orientation(rotation=(0, 270, 180))}
+END_2_TO_INITIAL_END_2_ORIENTATIONS = {Orientation(rotation=(180, 270, 0)),
+                                       Orientation(rotation=(180, 0, 270)),
+                                       Orientation(rotation=(90, 0, 180))}
 
 END_2_TO_INITIAL_END_1_ORIENTATIONS = {Orientation(rotation=(180, 0, 90)),
                                        Orientation(rotation=(0, 270, 0)),
                                        Orientation(rotation=(90, 0, 0))}
 
-END_1_TO_INITIAL_END_2_ORIENTATIONS = {Orientation(rotation=(0, 180, 90)),
-                                       Orientation(rotation=(00, 270, 0)),
-                                       Orientation(rotation=(90, 0, 00))}
+END_1_TO_INITIAL_END_2_ORIENTATIONS = {Orientation(rotation=(0, 180, 270)),
+                                       Orientation(rotation=(00, 90, 0)),
+                                       Orientation(rotation=(90, 0, 0))}
 
 CENTER_TO_INITIAL_CENTER_ORIENTATIONS = {Orientation(rotation=(180, 0, 90)),
                                          Orientation(rotation=(180, 0, 270)),
@@ -169,6 +169,8 @@ class Hub:
                 position_shift = tuple([-1*shift for shift in END_POSITION_SHIFT_BY_GLOBAL_FACE[global_face]])
                 # Generate matching piece
                 end_2_piece = piece.Piece(orientation=orientation, position=self.position + position_shift)
+                print(self.orientation)
+                print(end_2_piece.orientation)
                 display_meshes_with_colors([self.get_mesh(), end_2_piece.get_mesh()], ['white','purple'])
                 pieces.append(end_2_piece)
 
@@ -183,20 +185,26 @@ class Hub:
                 position_shift = tuple([-1 * shift for shift in END_POSITION_SHIFT_BY_GLOBAL_FACE[global_face]])
                 # Generate matching piece
                 end_2_piece = piece.Piece(orientation=orientation, position=self.position + position_shift)
-                #display_meshes_with_colors([self.get_mesh(), end_2_piece.get_mesh()], ['white','purple'])
+                print("END_2 to END_2")
+                print(self.orientation)
+                print(end_2_piece.orientation)
+                print(end_2_piece.orientation.to_rotation())
+                print()
+                display_meshes_with_colors([self.get_mesh(), end_2_piece.get_mesh()], ['white','purple'])
                 pieces.append(end_2_piece)
 
-            # Pieces connecting through their END_2
-            for orientation in END_1_TO_INITIAL_END_2_ORIENTATIONS:
+            # Pieces connecting through their END_1
+            for orientation in END_2_TO_INITIAL_END_1_ORIENTATIONS:
                 # Translate the connection to current orientation of self
                 orientation.rotate_multiple_global_axis(global_rotations_from_reset)
                 # Find global face of this connection
                 global_face = orientation.local_face_to_global_face(PIECE_LOCAL_FACE_END_1)
                 # Find respective shift of piece center
-                position_shift = tuple([-1*shift for shift in END_POSITION_SHIFT_BY_GLOBAL_FACE[global_face]])
+                position_shift = tuple([-1 * shift for shift in END_POSITION_SHIFT_BY_GLOBAL_FACE[global_face]])
                 # Generate matching piece
                 end_1_piece = piece.Piece(orientation=orientation, position=self.position + position_shift)
-                display_meshes_with_colors([self.get_mesh(), end_1_piece.get_mesh()], ['white','purple'])
+                print("END_2 to END_1")
+                display_meshes_with_colors([self.get_mesh(), end_1_piece.get_mesh()], ['white', 'purple'])
                 pieces.append(end_1_piece)
 
         # TODO: Handle END_2 and CENTER
