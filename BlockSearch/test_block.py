@@ -1,4 +1,6 @@
-from BlockSearch.block import Block, ORIENTATIONS, ORIENTATION, Floor
+from random import sample
+
+from BlockSearch.block import Block, ORIENTATIONS, ORIENTATION, Floor, RingFloor
 from unittest import TestCase
 from stl import mesh
 from BlockSearch.render import *
@@ -322,7 +324,37 @@ class Floor_Tests(TestCase):
             display_colored([floor.render(), block1.render()], [to_rgba((0.1, 0.1, 0.1), 0.001 ), 'b'])
 
 
+class Ring_Floor_Tests(TestCase):
 
+    def test_constructor(self):
+        floor = RingFloor(floor_mesh)
+        if DISPLAY:
+            display([floor.render()])
+
+        block1 = Block(block_mesh, (0, 0, 0), (0, 0, 0))
+        if DISPLAY:
+            display_colored([floor.render(), block1.render()], [to_rgba((0.1, 0.1, 0.1), 0.001 ), 'b'])
+
+    def test_sons(self):
+        floor = RingFloor(floor_mesh, size=50)
+        if DISPLAY:
+            display([floor.render()])
+
+        blocks = [Block(block_mesh, *d) for d in floor.gen_possible_block_descriptors()]
+        some = sample(blocks, 100)
+        if DISPLAY:
+            display([b.render() for b in some])
+
+    def test_perp_sons(self):
+        floor = RingFloor(floor_mesh, size=50)
+
+        blocks = [Block(block_mesh, *d) for d in floor.gen_possible_block_descriptors(
+            limit_orientation=lambda o: floor.is_perpendicular(o))]
+        some = sample(blocks, 100)
+        print (floor.orientation)
+        print (floor.is_perpendicular(floor))
+        if DISPLAY:
+            display([b.render() for b in some + [floor]])
 
 
 

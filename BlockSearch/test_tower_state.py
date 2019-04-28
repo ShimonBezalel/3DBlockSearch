@@ -13,7 +13,16 @@ DISPLAY = True #False
 block_mesh = mesh.Mesh.from_file('kapla.stl')
 floor_mesh = mesh.Mesh.from_file('floor.stl')
 
+DISPLAY = True
+TO_FILE = False
+
 class Tower_State_Test(TestCase):
+    def test_auto_close(self):
+        block = Block(block_mesh, (0, 0, 0), (0, 0, 2))
+        print("block created")
+        display([b.render() for b in [block]], auto_close=True)
+
+
     def test_spread(self):
         tower_state = Tower_State()
 
@@ -181,6 +190,61 @@ class Tower_State_Test(TestCase):
 
         for b in tower.gen_blocks():
             print(b.get_top_level())
+
+    def test_covers(self):
+        tower: Tower_State = Tower_State()
+        for new_block in [Block(block_mesh, 'flat_wide', (0, 0, i)) for i in range(1, 10)]:
+            if tower.can_add(new_block):
+                tower.add(new_block)
+        cover = tower.get_cover_at_level(0)
+        for i in range(10):
+            self.assertEqual(cover, tower.get_cover_at_level(i), str(tower.get_cover_at_level(i))+str(i))
+
+        tower: Tower_State = Tower_State()
+        for i in range(10):
+            for j in range(i, 10 - i):
+                new_block = Block(block_mesh, 'flat_thin', (0, j*3, i))
+                if tower.can_add(new_block):
+                    tower.add(new_block)
+        if DISPLAY:
+            display([b.render() for b in tower.gen_blocks()])
+        prev = 10000
+        for level in range(10):
+            size = tower.get_cover_at_level(level).__len__()
+            self.assertLessEqual(size, prev)
+            prev = size
+
+    def test_perp_tower(self):
+        STAGE = 10
+        tower: Tower_State = Tower_State(size=30, ring_floor=True)
+        for i in range(100):
+            added = []
+            for father_block in tower.gen_blocks(no_floor=False):
+                if not father_block.is_saturated(tower):
+                    for son_desc in father_block.gen_possible_block_descriptors(
+                            limit_orientation=lambda o: father_block.is_perpendicular(o), limit_len=STAGE / 2, random_order=True):
+                        son_block = Block(floor_mesh, *son_desc)
+                        if tower.can_add(son_block):
+                            tower.add(son_block)
+                            added.append(son_block)
+                            if len(added) > STAGE:
+                                break
+                    if len(added) > STAGE:
+                        break
+            print(i)
+            DISPLAY = False
+            TO_FILE = True
+
+            if DISPLAY or TO_FILE:
+                old_meshes = [b.render() for b in filter(lambda b: b not in added, tower.gen_blocks())]
+                new_meshes = [b.render() for b in added]
+                display_colored(old_meshes + new_meshes,
+                                ['gray'] * len(old_meshes) + ['cyan'] * len(new_meshes),
+                                scale=60,
+                                to_file=TO_FILE and not DISPLAY,
+                                file_name="plots/ring_floor4/{0:03}.png".format(i)
+                                )
+
 
 
 

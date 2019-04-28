@@ -414,7 +414,7 @@ class Physics_Test(TestCase):
                                                          random_order= True))
                 shuffle(possible_son_descriptors)
                 for desc in possible_son_descriptors:
-                    if not state.is_bad_block(Block.get_str(desc)):
+                    if not state.is_bad_block(Block.gen_str(desc)):
                         orientation, position = desc
                         new_block = Block(block_mesh, orientation, position)
                         if state.can_add(new_block):
@@ -525,7 +525,7 @@ class Physics_Test(TestCase):
                                                          random_order= True))
                 shuffle(possible_son_descriptors)
                 for desc in possible_son_descriptors:
-                    if not state.is_bad_block(Block.get_str(desc)):
+                    if not state.is_bad_block(Block.gen_str(desc)):
                         orientation, position = desc
                         new_block = Block(block_mesh, orientation, position)
                         p = propogate(new_block)

@@ -40,7 +40,7 @@ def is_stable(tower_state, new_block : Block):
     tower_state.set_blocks_below(new_block, blocks_below)
 
     blocks_above = calculate_above(new_block, blocks_by_bottom_level[top_level + 1]) \
-        if (bottom_level + 1) in blocks_by_bottom_level \
+        if (top_level + 1) in blocks_by_bottom_level \
         else set()
     tower_state.set_blocks_above(new_block, blocks_above)
 
@@ -202,7 +202,6 @@ def is_overlapping(block_tower , new_block : Block):
     :param new_block: either a new object or just it's string representation
     :return:
     """
-    #todo: if we implement this step elsewhere, before creating the object, then erase this
     if block_tower.is_bad_block(new_block):
         return True
 

@@ -34,7 +34,20 @@ ORIENTATIONS = {
     'flat_thin'     : (90, 90, 0),
     'flat_wide'     : (0, 90, 0)
 }
+ORIENTATION_LAYING = {
+    ORIENTATION.SHORT_THIN.value[0],
+    ORIENTATION.FLAT_THIN.value[0],
+    ORIENTATION.FLAT_WIDE.value[0],
+    ORIENTATION.SHORT_WIDE.value[0]
+}
+ORIENTATION_STANDING = {
+    ORIENTATION.TALL_THIN.value[0],
+    ORIENTATION.TALL_WIDE.value[0]
+}
+
 block_mesh = mesh.Mesh.from_file('kapla.stl')
+
+COVER_THRESHOLD = 0.2
 
 @memoized
 def init_rotated_mesh(arg):
@@ -69,6 +82,7 @@ class Block (Piece):
         Used as copy constructor
         """
         super().__init__()
+        self._saturated = False
         self._temp_above        = set()
         self._str: str        = "Block N/A"
         self.position           = (-10, -10, -10)
@@ -91,6 +105,7 @@ class Block (Piece):
         # todo: reuse rotation matrix!! can reduce init time by 30%
 
         super().__init__(shape, orientation, position)
+        self._saturated = False
         self._rendered_mesh = deepcopy(init_rotated_mesh(orientation))
         self._init_translation()
         self._original_shape = shape
@@ -104,7 +119,7 @@ class Block (Piece):
         self._block_above_me    = set()
         self._memoized_aggregate = None
         self._quick_data = np.array(np.concatenate((self.orientation, self.position)), dtype=np.int16)
-        self._str = Block.get_str((orientation, position))
+        self._str = Block.gen_str((orientation, position))
         self._repr = self._get_repr()
 
         self._h = self._quick_data.__hash__
@@ -131,13 +146,18 @@ class Block (Piece):
             self.get_aggregate_mesh(state)
         return self._aggregate_cog
 
-    def is_perpendicular(self, other : Piece):
+    def is_perpendicular(self, other: 'Block' or Tuple[int, int, int] or str):
         """
         Returns if this block is perpendicular to a given block, in some axis
         :param other: a block
         :return: True iff these two blocks are not have parallel orientations on the XY plane
         """
-        return self.orientation != other.orientation
+        other = ORIENTATIONS[other] if type(other) == str else other
+        other_orientation = other.orientation if type(other) == Block else other
+        if self.orientation in ORIENTATION_STANDING:
+            return other_orientation in ORIENTATION_LAYING
+        else: #  self.orientation in ORIENTATION_LAYING ...
+            return other_orientation in ORIENTATION_STANDING
 
     def is_overlapping(self, other : 'Block'):
         """
@@ -182,6 +202,7 @@ class Block (Piece):
         # self._cells = np.array
         # Set of theoretical cells with only X and Y, that are this blocks footprint
         self._cover_cells = set()
+        cog = tuple(int(i) for i in self.get_cog())
 
         half_depth = self.SHAPE_IN_CELLS[X] // 2
         half_width = self.SHAPE_IN_CELLS[Y] // 2
@@ -189,7 +210,6 @@ class Block (Piece):
 
         for x in range(-half_depth, half_depth + 1):
             for y in range(-half_width, half_width + 1):
-                cog = tuple(int(i) for i in self.get_cog())
                 for z in range(-half_height, half_height + 1):
                     self._cells.add((cog[X] + x, cog[Y] + y, cog[Z] + z))
                 self._cover_cells.add((cog[X] + x, cog[Y] + y))
@@ -405,6 +425,21 @@ class Block (Piece):
         for block in state.get_blocks_below(self):
             block.reset_aggregate_mesh(state)
 
+    def is_saturated(self, tower_state):
+        if self._saturated:
+            return True
+        else:
+            # Refer to blocks directly above me and see if they fill a percentage of my cover space
+            blocks_above = tower_state.get_blocks_above(self)
+            cover_above_me = set()
+            #perform set intersection for all blocks above me
+            for block in blocks_above:
+                cover_above_me  |= block._cover_cells
+            covering_me = self._cover_cells & cover_above_me
+            if len(covering_me) / len(self._cover_cells) > COVER_THRESHOLD:
+                self._saturated = True
+            return self._saturated
+
     def gen_possible_block_descriptors(self, limit_orientation=lambda o: True, limit_len=60000, random_order=None) -> Generator[tuple, None, None]:
         """
         Generates a (orientation, position) map of possible sons of this block. A son is any block which can sit
@@ -413,6 +448,8 @@ class Block (Piece):
                                     default behavior is no limitations
         :return:
         """
+        if self._saturated:
+            return
         i = 0
         seen_blocks = set()
         new_level = self.get_top_level() + 1
@@ -444,11 +481,15 @@ class Block (Piece):
                     shuffle(yrange)
                 for x in xrange:
                     for y in yrange:
+                        if x == self._cog[X] or y == self._cog[Y]:
+                            continue
                         candidate = (ORIENTATIONS[orientation], (x, y, z))
                         if candidate not in seen_blocks:
                             yield candidate
                             i += 1
                             if i >= limit_len:
+                                return
+                            if self._saturated:
                                 return
                         seen_blocks.add(candidate)
 
@@ -464,7 +505,7 @@ class Block (Piece):
                                                  str(self.position))
 
     @staticmethod
-    def get_str(descriptor) -> str:
+    def gen_str(descriptor) -> str:
         """
         publicly assailable block string from descriptor
         """
@@ -479,11 +520,48 @@ class Block (Piece):
         return self._rendered_mesh
 
 
+class RingFloor(Block):
+    def __init__(self, floor_mesh, size=30):
+        self.SHAPE_IN_CELLS = (size, size, 1)
+        self._size = size
+        super().__init__(shape=floor_mesh, orientation=(0, 0, 0 ), position=(0, 0, 0 ))
+        self._rendered_mesh = floor_mesh
+        self._str = "Ring Floor: size {}".format(size)
+
+    def get_size(self):
+        return self._size
+
+    def _init_cells(self):
+        #TODO: convert cells to np array
+        # Set of all the cells contained within this block
+        self._cells = set()
+        # self._cells = np.array
+        # Set of theoretical cells with only X and Y, that are this blocks footprint
+        self._cover_cells = set()
+        cog = tuple(int(i) for i in self.get_cog())
+
+        half_depth = self._size // 2
+        half_width = self._size // 2
+        half_height = 0
+
+        for x in range(-half_depth, half_depth + 1):
+            for y in range(-half_width, half_width + 1):
+                for z in range(-half_height, half_height + 1):
+                    posish = (x, y, z)
+                    dist = np.linalg.norm((posish, (0, 0, 0)))
+                    if dist >= self._size / 2 - 3 and dist <= self._size / 2:
+                        self._cells.add((cog[X] + x, cog[Y] + y, cog[Z] + z))
+                        self._cover_cells.add((cog[X] + x, cog[Y] + y))
+
+    def __repr__(self):
+        return self._str
+
 class Floor(Block):
 
     def __init__(self, floor_mesh, size=30):
         super().__init__(shape=floor_mesh, orientation=(0, 0, 0 ), position=(0, 0, 0 ))
         self.SHAPE_IN_CELLS = (size, size, 1)
+        self._rendered_mesh = floor_mesh
         self._size = size
         self._init_cells()
         self._init_levels()

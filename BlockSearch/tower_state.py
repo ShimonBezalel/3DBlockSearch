@@ -2,7 +2,7 @@ from copy import copy, deepcopy
 
 from BlockSearch.grid import Grid
 from BlockSearch import physics as Physics
-from BlockSearch.block import Block, Floor, ORIENTATIONS
+from BlockSearch.block import Block, Floor, ORIENTATIONS, RingFloor
 from stl import mesh
 from typing import List, Set, Dict, Tuple, Optional, Generator
 import numpy as np
@@ -28,12 +28,15 @@ class Tower_State(Grid):
         _index_to_orientation[i] = orientation
 
 
-    def __init__(self, size=30):
+    def __init__(self, size=30, ring_floor=False, father_state=None):
         super().__init__()
         self._max_level = 0
         self._blocks_by_top_level: Dict[int: List[Block]] = dict()
         self._blocks_by_bottom_level: Dict[int: List[Block]] = dict()
-        floor = Floor(floor_mesh, size)
+        if not ring_floor:
+            floor = Floor(floor_mesh, size)
+        else:
+            floor = RingFloor(floor_mesh, size)
         self._blocks_by_top_level[FLOOR_LEVEL] = [floor]
         self._orientation_counter: np.ndarray = np.zeros(shape=(6,))
         self._connectivity: Dict[Block: List[Set[Block], Set[Block]]] = dict()
@@ -41,8 +44,10 @@ class Tower_State(Grid):
         #  Remembers bad blocks that should not consume any more time resources
         self._bad_block_hashes = set()
         # self._init_orientation_counter()
-        self._spreads_memory: Dict[Dict[Block]:Set[Block]] = dict()
+        self._spreads_memory: Dict[Tuple[Block, Block]: Set[Block]] = dict()
         self._cover_cells_at_level: Dict[int: Set[Tuple[int, int]]] = dict()
+        self._starting_cover_size = (size**2 - (size-3)**2)
+        self._father_state = father_state
 
     def add_bad_block(self, block : Block or str):
         """
@@ -71,9 +76,12 @@ class Tower_State(Grid):
         self.add_bad_block(stringify)
 
     def is_bad_block(self, block : Block or str):
-        return hash(block) in self._bad_block_hashes
+        if not hash(block) in self._bad_block_hashes:
+            if self._father_state:
+                return self._father_state.is_bad_block(block)
+            return False
+        return True
 
-    #todo one of these is wrong
     def get_blocks_by_bottom_level(self):
         return self._blocks_by_bottom_level
 
@@ -81,7 +89,6 @@ class Tower_State(Grid):
         return self._blocks_by_top_level
 
     def gen_blocks(self, orientation_filter=None, no_floor=True) -> Generator[Block, None, None]:
-        # Does not iterate floor
         filter_levels = lambda l: l != FLOOR_LEVEL if no_floor else lambda l: True
         filter_orientations = orientation_filter if orientation_filter else lambda o: True
         for level in sorted(filter(filter_levels, self._blocks_by_top_level.keys()), reverse=True):
@@ -100,6 +107,10 @@ class Tower_State(Grid):
         :param level:
         :return:
         """
+        ret = set()
+        for i in filter(lambda l: l in self._cover_cells_at_level, range(level, self._max_level + 1)):
+            ret |= self._cover_cells_at_level[i]
+        return ret
 
     def get_spread(self, block1: Block, block2: Block):
         """
@@ -199,7 +210,7 @@ class Tower_State(Grid):
         # Make additional changes to state for fast grading
         self._orientation_counter[Tower_State._orientation_to_index[block.orientation]] += 1
         self._max_level = max(self._max_level, block.get_top_level())
-        for level in range(bottom, top):
+        for level in range(bottom, top + 1):
             if level not in self._cover_cells_at_level:
                 self._cover_cells_at_level[level] = set()
             self._cover_cells_at_level[level] |= block.get_cover_cells()
@@ -331,13 +342,16 @@ class Tower_State(Grid):
         return self.__str__() == other.__str__()
 
     def __copy__(self):
-        new = Tower_State(self[FLOOR_LEVEL][0].get_size())
+        new = Tower_State(self[FLOOR_LEVEL][0].get_size(), father_state=self)
         new._connectivity           = deepcopy(self._connectivity)
         new._max_level              = self._max_level
-        new._orientation_counter    = deepcopy(self._orientation_counter)
-        new._bad_block_hashes       = copy(self._bad_block_hashes)
-        new._blocks_by_top_level        = deepcopy(self._blocks_by_top_level)
-        new._spreads_memory         = deepcopy(self._spreads_memory)
+        new._orientation_counter    = copy(self._orientation_counter)
+        #new._bad_block_hashes       = copy(self._bad_block_hashes)
+        new._blocks_by_top_level    = deepcopy(self._blocks_by_top_level)
+        new._blocks_by_bottom_level = deepcopy(self._blocks_by_bottom_level)
+        new._spreads_memory         = self._spreads_memory # invarient of state
+        # new._cover_cells_at_level   = deepcopy(self._cover_cells_at_level)
+        new._starting_cover_size    = self._starting_cover_size
         return new
 
     def __getitem__(self, item):

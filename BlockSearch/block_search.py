@@ -16,7 +16,7 @@ X = 0
 Y = 1
 Z = 2
 block_mesh = mesh.Mesh.from_file('kapla.stl')
-DISPLAY = False
+DISPLAY = True
 
 class Block_Search(SearchProblem):
     minus = [-1, 1, -1, 1]
@@ -67,6 +67,7 @@ class Block_Search(SearchProblem):
         self._num_of_blocks_in_action = limit_blocks_in_action
         self._num_of_descriptors_disqualified = 0
         self._num_of_blocks_disqualified = 0
+        self._num_of_blocks_saturated = 0
         self._symmetrical_base_distance = sym_base_dist
         self._limit_branching=limit_branching
         self._height_goal = height_goal
@@ -82,6 +83,9 @@ class Block_Search(SearchProblem):
             num_of_blocks_added = 0
             actions = []
             for father_block in state.gen_blocks(no_floor=False):
+                if father_block.is_saturated(new_state):
+                    self._num_of_blocks_saturated += 1
+                    continue
                 if len(actions) > self._num_of_blocks_in_action:
                     break
                 son_descriptors = list(father_block.gen_possible_block_descriptors(
@@ -94,7 +98,7 @@ class Block_Search(SearchProblem):
                 for desc in son_descriptors:
                     if len(actions) > self._num_of_blocks_in_action:
                         break
-                    if state.is_bad_block(Block.get_str(desc)):
+                    if state.is_bad_block(Block.gen_str(desc)):
                         self._num_of_descriptors_disqualified += 1
                     else:  # good block description, lets try it out
                         blocks = [Block(block_mesh, *desc)]
@@ -102,7 +106,7 @@ class Block_Search(SearchProblem):
                             sub_descriptors = Block_Search.propagate(*desc, dist=self._symmetrical_base_distance)
                             # qualified_symmetrical_brothers = len(sub_descriptors)
                             for sym_desc in sub_descriptors:
-                                if state.is_bad_block(Block.get_str(desc)):
+                                if state.is_bad_block(Block.gen_str(desc)):
                                     self._num_of_descriptors_disqualified += 1
                                     # qualified_symmetrical_brothers -= 1
                                 else:
@@ -133,10 +137,13 @@ class Block_Search(SearchProblem):
                                 actions.append(good_block)
                                 num_of_blocks_added += 1
             successors.append((new_state, actions, len(actions)))
-        # pp(successors)
-        print("\tNum of desc disqualified:{}\tNum of blocks disqualified:{}".format(
+            # if DISPLAY:
+            #     display_colored([b.render() for b in state.gen_blocks()])
+            # return True
+        print("\tNum of desc disqualified:{}\tNum of blocks disqualified:{}\tNum of staturated:{}".format(
             self._num_of_descriptors_disqualified,
-            self._num_of_blocks_disqualified
+            self._num_of_blocks_disqualified,
+            self._num_of_blocks_saturated
         ))
         return successors
 
@@ -146,10 +153,75 @@ class Block_Search(SearchProblem):
     def is_goal_state(self, state: Tower_State):
         if state._max_level >= self._height_goal:
             if DISPLAY:
-                display([b.render() for b in state.gen_blocks()])
+                display([b.render() for b in state.gen_blocks()], scale=self._height_goal * 0.7)
             return True
         return False
 
+
+class Cover_Block_Search(Block_Search):
+
+    def get_start_state(self) -> Tower_State:
+        tower: Tower_State = Tower_State(size=self._floor_size, ring_floor=True)
+        return tower
+
+    def get_successors(self, tower_state: Tower_State):
+
+        print("Building succesors for state of height:{}".format(tower_state._max_level))
+        # new_states = [copy(state) for _ in range(self._limit_branching)]
+        # successors = []
+        pp(tower_state)
+        all_possible_son_desc = []
+        for father_block in tower_state.gen_blocks(no_floor=False):
+            if father_block.is_saturated(tower_state):
+                self._num_of_blocks_saturated += 1
+                continue
+            all_possible_son_desc.extend(filter(
+                lambda desc: not tower_state.is_bad_block(Block.gen_str(desc)),
+                father_block.gen_possible_block_descriptors(
+                      limit_orientation=lambda o: father_block.is_perpendicular(o),
+                      limit_len=self._limit_sons,
+                      random_order=self._gen_randomly
+                )
+            )
+            )
+        if self._gen_randomly:
+            shuffle(all_possible_son_desc)
+        else:
+            all_possible_son_desc.sort(key=lambda desc: desc[1][Z], reverse=True)
+        for _ in range(self._limit_branching):
+            new_tower = copy(tower_state)
+            actions = []
+            while len(actions) < self._num_of_blocks_in_action:
+                if all_possible_son_desc:
+                    desc = all_possible_son_desc.pop()
+                else:
+                    break
+                if tower_state.is_bad_block(Block.gen_str(desc)):
+                    self._num_of_descriptors_disqualified += 1
+                    continue
+                son_block = Block(block_mesh, *desc)
+                if new_tower.can_add(son_block):
+                    new_tower.add(son_block)
+                    actions.append(son_block)
+                else:
+                    self._num_of_blocks_disqualified += 1
+            if actions:
+                yield (new_tower, actions, len(actions))
+            else:
+                print(
+                    "\tNum of desc disqualified:\t{}\n\tNum of blocks disqualified:\t{}\n\tNum of blocks saturated:\t{}".format(
+                        self._num_of_descriptors_disqualified,
+                        self._num_of_blocks_disqualified,
+                        self._num_of_blocks_saturated
+                    ))
+                return
+                #successors.append((new_tower, actions, len(actions)))
+        print("\tNum of desc disqualified:\t{}\n\tNum of blocks disqualified:\t{}\n\tNum of blocks saturated:\t{}".format(
+            self._num_of_descriptors_disqualified,
+            self._num_of_blocks_disqualified,
+            self._num_of_blocks_saturated
+        ))
+        #eturn successors
 
 
 

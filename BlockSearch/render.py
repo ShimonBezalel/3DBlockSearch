@@ -1,9 +1,8 @@
+import time
 import uuid
-
+import os
 import numpy
 import numpy as np
-# from BlockSearch.physics import *
-# from BlockSearch import physics as Physics
 
 from matplotlib import pyplot
 from mpl_toolkits import mplot3d
@@ -20,7 +19,6 @@ ORIENTATIONS = {
 }
 
 # Aliasing
-np = numpy
 plt = pyplot
 
 # Constants
@@ -35,36 +33,47 @@ matte_color     = (0.8, 0.8, 0.8)
 
 GRID = False  #True # on
 
-
-def save(meshes, subfolder="default"):
-    assert (meshes)
-    for mesh in meshes:
-        mesh.save("saved_stls/{}/{}.stl".format(subfolder, str(uuid.uuid4())))
+def save(meshes, subfolder="default", subfolders=None):
+    if subfolders:
+        for mesh, second in zip(meshes, subfolders):
+            mesh.save(os.path.join("saved_stls", subfolder, second, str(uuid.uuid4())) + ".stl")
+    else:
+        for mesh in meshes:
+            mesh.save(os.path.join("saved_stls", subfolder, str(uuid.uuid4())) +  ".stl")
 
 def combine(meshes):
     return mesh.Mesh(np.concatenate([m.data for m in meshes]))
 
-def save_by_orientation(tower_state, subfolder="default"):
+def save_by_orientation(tower_state, subfolder="default", seperate_orientations=True):
     by_orientation = []
-    for orientation in ORIENTATIONS.values():
+    order = []
+    for key, orientation in ORIENTATIONS.items():
+        order.append(key)
         meshes = [b.render() for b in filter(lambda b: b.orientation == orientation, tower_state.gen_blocks())]
         if meshes:
             single_mesh = combine(meshes)
             by_orientation.append(single_mesh)
 
-    save(by_orientation, subfolder)
+    subfolders = order if seperate_orientations else None
 
-def save_by_orientation_blocks(blocks, subfolder="default"):
+    save(by_orientation, subfolder, subfolders)
+
+def save_by_orientation_blocks(blocks, subfolder="default", seperate_orientations=True):
     by_orientation = []
-    for orientation in ORIENTATIONS.values():
+    order = []
+    for key, orientation in ORIENTATIONS.items():
+        order.append(key)
         meshes = [b.render() for b in filter(lambda b: b.orientation == orientation, blocks)]
         if meshes:
             single_mesh = combine(meshes)
             by_orientation.append(single_mesh)
 
-    save(by_orientation, subfolder)
+    subfolders = order if seperate_orientations else None
 
-def display(meshes, scale=None):
+    save(by_orientation, subfolder, subfolders=subfolders)
+
+
+def display(meshes, scale=None, to_file=False, file_name="BlockSearch/plots/default.png", auto_close=False):
     # Optionally render the rotated cube faces
     # from matplotlib import pyplot
     # from mpl_toolkits import mplot3d
@@ -77,9 +86,9 @@ def display(meshes, scale=None):
         hide_grid(axes)
 
     if scale:
-        plt.xlim(-scale, scale)
-        plt.ylim(-scale, scale)
-        axes.scatter([0, 0], [0, 0], [-scale, scale], c='w', marker='.')
+        axes.set_xlim(-scale, scale)
+        axes.set_ylim(-scale, scale)
+        axes.set_zlim(0, 2*scale)
 
     # Render the cube faces
     for i, m in enumerate(meshes):
@@ -97,7 +106,38 @@ def display(meshes, scale=None):
     axes.auto_scale_xyz(scale, scale, scale)
 
     # Show the plot to the screen
-    pyplot.show()
+    if to_file:
+        pyplot.savefig(file_name, orientation='portrait')
+    else:
+        if not auto_close:
+            pyplot.show()
+        else:
+            assert False, "Not implemented"
+            # import os
+            # def info(title):
+            #     print(title)
+            #     print ('module name:', __name__)
+            #     if hasattr(os, 'getppid'):  # only available on Unix
+            #         print('parent process:', os.getppid())
+            #     print('process id:', os.getpid())
+            #
+            # def close_after( sec=5):
+            #     info("close after")
+            #     time.sleep(sec)
+            #     plt.close('all')
+            #
+            # def open_immidiately(plot=pyplot):
+            #     info("open_immidiately")
+            #     plt.show()
+            #
+            #
+            # p1 = multiprocessing.Process(name="closes window", target=close_after)
+            # p2 = multiprocessing.Process(name="shows window", target=open_immidiately)
+            # p1.start()
+            # p2.start()
+            # p1.join()
+            # p2.join()
+            # # open_immidiately()
 
 def display_cells( cells ):
     fig = plt.figure()
@@ -186,18 +226,22 @@ def display_multiple_grids(cells_list, scale=50):
     plt.show()
 
 
-def display_colored(meshes, colors, centers=None):
+def display_colored(meshes, colors, centers=None, scale=None, to_file=False, file_name="BlockSearch/plots/default.png"):
 
     # Create a new plot
     figure = pyplot.figure()
     axes = mplot3d.Axes3D(figure)
+
+    if scale:
+        axes.set_xlim(-scale, scale)
+        axes.set_ylim(-scale, scale)
+        axes.set_zlim(0, 2*scale)
 
     if not GRID:
         hide_grid(axes)
 
     # Render the cube faces
     for i, m in enumerate(meshes):
-        # i += 1
         mesh = Poly3DCollection(m.vectors, alpha=0.70)
         mesh.set_facecolor(colors[i])
         mesh.set_edgecolor('black')
@@ -217,7 +261,10 @@ def display_colored(meshes, colors, centers=None):
     axes.auto_scale_xyz(scale, scale, scale)
 
     # Show the plot to the screen
-    pyplot.show()
+    if to_file:
+        pyplot.savefig(file_name, orientation='portrait', quality=100, dpi=300)
+    else:
+        pyplot.show()
 
 def display_board(board_state : dict, support_blocks : list, new_block):
     blocks = []
@@ -236,5 +283,5 @@ def hide_grid(ax):
     # Hide axes ticks
     ax.set_xticks([])
     ax.set_yticks([])
-    ax.set_zticks([])
+    # ax.set_zticks([])
 
