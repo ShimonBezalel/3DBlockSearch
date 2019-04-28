@@ -1,5 +1,8 @@
 from time import sleep
 
+from pylab import *
+from drawnow import drawnow, figure
+
 import numpy as np
 from matplotlib import pyplot
 from mpl_toolkits import mplot3d
@@ -54,10 +57,19 @@ def display_parts(pieces):
     # Show the plot to the screen
     pyplot.show()
 
-def display_meshes_with_colors_and_alphas(meshes, corresponding_colors, corresponding_alphas, scale=None, filename=None):
+# lines = [(start_x,start_y,start_z),(end_x,end_y,end_z),color]
+START_POS = 0
+END_POS = 1
+COLOR_POS = 2
+X = 0
+Y = 1
+Z = 2
+
+count=0
+def display_meshes_with_colors_and_alphas(meshes, corresponding_colors, corresponding_alphas, scale=None, filename=None, lines=None, labels=None, dirname=None):
     # Create a new plot
-    figure = pyplot.figure()
-    axes = mplot3d.Axes3D(figure)
+    fig = pyplot.figure()
+    axes = mplot3d.Axes3D(fig)
 
     if scale:
         #plt.xlim(-scale, scale)
@@ -84,13 +96,27 @@ def display_meshes_with_colors_and_alphas(meshes, corresponding_colors, correspo
         scale = np.concatenate([m.points for m in meshes]).flatten(-1)
         axes.auto_scale_xyz(scale, scale, scale)
 
+    if lines:
+        for line in lines:
+            axes.plot([line[START_POS][X], line[END_POS][X]],
+                      [line[START_POS][Y], line[END_POS][Y]],
+                      zs=[line[START_POS][Z], line[END_POS][Z]], color=line[COLOR_POS])
+    if labels:
+        for label in labels:
+            axes.text3D(label[X],label[Y],label[Z],label[-1])
+
+    # Save to file OR Show the plot to the screen
     if filename:
         pyplot.savefig(filename)
         print("saving {}...".format(filename))
-
-    # Show the plot to the screen
+    elif dirname:
+        global count
+        pyplot.savefig("{}/{}.png".format(dirname, count))
+        count += 1
     else:
-        pyplot.show()
+        plt.draw()
+        plt.pause(0.02)
+        #plt.close()
 
 
 def display_meshes_with_colors(meshes, corresponding_colors):

@@ -64,7 +64,7 @@ class SearchNode:
     def heucost(self):
         return self.cost + self.heur
 
-def generic_first_search(problem, fringe):
+def generic_first_search(problem, fringe, outdir=None):
     """
     Search the nodes in the search tree first according to the given fringe
     (Stack for DFS, Queue for BFS).
@@ -77,9 +77,11 @@ def generic_first_search(problem, fringe):
         state = fringe.pop()
 
         if problem.is_goal_state(state):
+            state.labels = None
+            state.display(scale=100, dirname=outdir)
             return construct_path(state, backtrace)
 
-        for child, action, _ in problem.get_successors(state):
+        for child, action, _ in problem.get_successors(state, outdir):
             if child not in backtrace:
                 backtrace[child] = (state, action)
 
@@ -135,11 +137,11 @@ def dfs_recursion(problem, state, visited=set()):
             # This state is useless and should return None.
             return None
 
-def breadth_first_search(problem):
+def breadth_first_search(problem, outdir=None):
     """
     Search the shallowest nodes in the search tree first.
     """
-    return generic_first_search(problem, util.Queue())
+    return generic_first_search(problem, util.Queue(), outdir)
 
 def construct_path(state, backtrace):
     """
@@ -165,7 +167,7 @@ def uniform_cost_search(problem):
     return a_star_search(problem, null_heuristic)
 
 
-def null_heuristic(state, problem=None):
+def null_heuristic(state, problem=None, outdir=None):
     """
     A heuristic function estimates the cost from the current state to the nearest
     goal in the provided SearchProblem.  This heuristic is trivial.
@@ -173,7 +175,7 @@ def null_heuristic(state, problem=None):
     return 0
 
 
-def a_star_search(problem, heuristic=null_heuristic):
+def a_star_search(problem, heuristic=null_heuristic, outdir=None):
     """
     Search the node that has the lowest combined cost and heuristic first.
     """
@@ -192,9 +194,11 @@ def a_star_search(problem, heuristic=null_heuristic):
         cost_to_parent = node.cost
 
         if problem.is_goal_state(state):
+            state.labels = None
+            state.display(scale=100, dirname=outdir)
             return construct_path(state, backtrace)
 
-        for child, action, _ in problem.get_successors(state):
+        for child, action, _ in problem.get_successors(state, outdir):
             cost_to_child = cost_to_parent + problem.get_cost_of_actions([action])
             visited = (child in backtrace)
             shorter = (visited) and (cost_to_child < backtrace[child][COST_INDEX])
@@ -202,7 +206,7 @@ def a_star_search(problem, heuristic=null_heuristic):
                 if visited:
                     heur_from_child = backtrace[child][HEUR_INDEX]
                 else:
-                    heur_from_child = heuristic(child, problem)
+                    heur_from_child = heuristic(child, problem, outdir=outdir)
                 backtrace[child] = (state, action, cost_to_child, heur_from_child)
                 child_node = SearchNode(child, cost_to_child,
                                         heur_from_child)

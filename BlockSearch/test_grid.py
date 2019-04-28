@@ -27,11 +27,11 @@ class Test_Hub(TestCase):
         count = 0
         basename = lambda : '../{}/{}.png'.format('screenshots', count)
         G = Grid()
-        G.display(scale=scale, filename=basename())
+        #G.display(scale=scale, filename=basename())
         count += 1
         P1 = piece.Piece()
         G.add_piece(P1)
-        G.display(scale=scale, filename=basename(), all_white=True)
+        #G.display(scale=scale, filename=basename(), all_white=True)
         count += 1
         for H1 in P1.get_hubs():
             for P2 in H1.get_connectible_pieces():
@@ -41,10 +41,11 @@ class Test_Hub(TestCase):
                     G.add_piece(P2)
                     for H2 in P2.get_hubs():
                         for P3 in H2.get_connectible_pieces():
-                            G.display_with_candidate(P3, scale=scale, filename=basename())
+                            #G.display_with_candidate(P3, scale=scale, filename=basename())
                             count += 1
                             if G.can_add_piece(P3):
                                 G.add_piece(P3)
+                    print(G)
         G.display(scale=scale, filename=basename())
         count+=1
 
@@ -68,3 +69,20 @@ class Test_Hub(TestCase):
         self.assertTrue(t100.is_target)
         self.assertFalse(t101.is_target)
         self.assertTrue(tm100.is_target)
+
+    def test_equal(self):
+        g1 = Grid()
+        g2 = Grid()
+        print(g1)
+        self.assertEqual(g1, g2)
+
+        t1 = Target((1,2,3))
+        t2 = Target((2,3,4))
+        t3 = Target((3,4,5))
+
+        g1 = Grid([t1,t2,t3])
+        g2 = Grid([t2,t1,t3])
+        print(g1)
+        self.assertEqual(g1, g2
+
+                         )
