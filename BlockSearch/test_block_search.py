@@ -9,10 +9,10 @@ from target import Target
 class Test_Block_Search(TestCase):
 
     def test_ucs(self):
-        t1 = Target((5,0,0))
-        t2 = Target((0,5,0))
-        t3 = Target((0,0,5))
-        problem = HubSpreadProblem(targets=[t1,t2,t3])
+        t1 = Target((5, 0, 0))
+        t2 = Target((0, 5, 0))
+        t3 = Target((0, 0, 5))
+        problem = HubSpreadProblem(targets=[t1, t2, t3])
         problem.grid.display(scale=200)
 
     def test_dfs(self):
@@ -23,13 +23,13 @@ class Test_Block_Search(TestCase):
         empty_grid = Grid([t1, t2, t3, t4])
         empty_grid.display(filename="../screenshots/dfs3/0.png", all_white=True)
         problem = HubSpreadProblem(targets=[t1, t2, t3, t4])
-        #problem.grid.display(scale=200, all_white=True)
+        # problem.grid.display(scale=200, all_white=True)
 
         path = breadth_first_search(problem)
         grid = problem.get_start_state()
-        count=1
+        count = 1
         grid.display(filename="../screenshots/dfs3/{}.png".format(count), all_white=True)
-        count +=1
+        count += 1
         for piece in path:
             grid.add_piece(piece)
             grid.display(filename="../screenshots/dfs3/{}.png".format(count), all_white=True)
@@ -63,7 +63,7 @@ class Test_Block_Search(TestCase):
         t5 = Target((-2, 3, 4))
         problem = HubSpreadProblem(targets=[t1, t2, t3, t4, t5])
         state = problem.get_start_state()
-        print ("MAXIMAL MINDIST = ", maximal_mindist_heuristic(state))
+        print("MAXIMAL MINDIST = ", maximal_mindist_heuristic(state))
 
     def test_maximal_mindist_heuristic(self):
         t1 = Target((0, 2, 0))
@@ -73,20 +73,20 @@ class Test_Block_Search(TestCase):
         t5 = Target((-2, 3, 4))
         problem = HubSpreadProblem(targets=[t1, t2, t3, t4, t5])
         state = problem.get_start_state()
-        #print ("MAXIMAL MINDIST = ", maximal_mindist_heuristic(state))
+        # print ("MAXIMAL MINDIST = ", maximal_mindist_heuristic(state))
         path = a_star_search(problem, maximal_mindist_heuristic)
 
     def test_maximal_mindist_heuristic_small(self):
-        OUT_DIR_A_STAR = '../screenshots/a_star'
+        OUT_DIR_A_STAR = None  # '../screenshots/a_star'
         t1 = Target((-2, 0, 0))
         t2 = Target((0, 2, 0))
         t3 = Target((0, 0, 0))
         empty_grid = Grid([t1, t2, t3])
         empty_grid.display(all_white=True, dirname=OUT_DIR_A_STAR, scale=50)
 
-        problem = HubSpreadProblem(targets=[t1, t2, t3])# t4, t5])
+        problem = HubSpreadProblem(targets=[t1, t2, t3])  # t4, t5])
         state = problem.get_start_state()
-        #print ("MAXIMAL MINDIST = ", maximal_mindist_heuristic(state))
+        # print ("MAXIMAL MINDIST = ", maximal_mindist_heuristic(state))
         path = a_star_search(problem, maximal_mindist_heuristic, outdir=OUT_DIR_A_STAR)
         grid = problem.get_start_state()
         grid.lines = None
@@ -98,7 +98,7 @@ class Test_Block_Search(TestCase):
             grid.display(all_white=False, dirname=OUT_DIR_A_STAR)
 
     def test_dfs_vs_astar(self):
-        OUT_DIR_A_DFS = '../screenshots/a_dfs'
+        # OUT_DIR_A_DFS = '../screenshots/a_dfs'
         t1 = Target((-2, 0, 0))
         t2 = Target((0, 2, 0))
         t3 = Target((0, 0, 0))
@@ -129,9 +129,8 @@ class Test_Block_Search(TestCase):
         empty_grid = Grid([t1, t2, t3, t4, t5, t6])
         empty_grid.display(all_white=True, dirname=OUT_DIR_A_STAR, scale=100)
 
-        problem = HubSpreadProblem(targets=[t1, t2, t3, t4, t5, t6])# t4, t5])
-        state = problem.get_start_state()
-        #print ("MAXIMAL MINDIST = ", maximal_mindist_heuristic(state))
+        problem = HubSpreadProblem(targets=[t1, t2, t3, t4, t5, t6])  # t4, t5])
+        # print ("MAXIMAL MINDIST = ", maximal_mindist_heuristic(state))
         path = a_star_search(problem, maximal_mindist_heuristic, outdir=OUT_DIR_A_STAR)
         grid = problem.get_start_state()
         grid.lines = None
@@ -153,11 +152,34 @@ class Test_Block_Search(TestCase):
         empty_grid = Grid([t1, t2, t3, t4, t5, t6])
         empty_grid.display(all_white=True, dirname=OUT_DIR_A_STAR, scale=100)
 
-        problem = HubSpreadProblem(targets=[t1, t2, t3, t4, t5, t6])# t4, t5])
-        state = problem.get_start_state()
-        #print ("MAXIMAL MINDIST = ", maximal_mindist_heuristic(state))
+        problem = HubSpreadProblem(targets=[t1, t2, t3, t4, t5, t6])  # t4, t5])
         path = a_star_search(problem, sum_mindist_heuristic, outdir=OUT_DIR_A_STAR)
         grid = problem.get_start_state()
+        grid.lines = None
+        grid.labels = None
+
+        grid.display(all_white=True, dirname=OUT_DIR_A_STAR)
+        for piece in path:
+            grid.add_piece(piece)
+            grid.display(all_white=False, dirname=OUT_DIR_A_STAR)
+
+
+    def test_sum_mindist_heuristic_medium(self):
+        OUT_DIR_A_STAR = None
+        t1 = Target((-5, 0, 0))
+        t2 = Target((1, 0, 0))
+        t3 = Target((-5, 6, 0))
+        t4 = Target((1, 6, 0))
+        #t5 = Target((4, 3, 0))
+        #t6 = Target((2, 0, -3))
+        targets = [t1,t2,t3,t4]
+        empty_grid = Grid(targets)
+        empty_grid.display(all_white=True, dirname=OUT_DIR_A_STAR, scale=100)
+
+        problem = HubSpreadProblem(targets)  # t4, t5])
+        path = a_star_search(problem, sum_mindist_heuristic, outdir=OUT_DIR_A_STAR)
+
+        grid = empty_grid
         grid.lines = None
         grid.labels = None
 

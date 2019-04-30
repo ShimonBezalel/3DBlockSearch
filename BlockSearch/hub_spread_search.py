@@ -18,18 +18,22 @@ HEUR_INDEX = 3
 
 class HubSpreadProblem:
 
-    def __init__(self, targets):
+    def __init__(self, targets, heuristic=None):
         self.expanded = 0
         self.targets = targets
         self.grid = Grid(targets=self.targets)
-        starting_piece = Piece(position=targets[0].position)
-        self.grid.add_piece(starting_piece)
 
-    def get_start_state(self):
+    def get_start_state(self, heuristic=None, display=False):
         """
         Returns the start state for the search problem
         """
-        return self.grid
+        if not heuristic:
+            starting_piece = Piece(position=self.targets[0].position)
+        else:
+            starting_piece = self.choose_starting_piece(self.grid, heuristic, display)
+        start = deepcopy(self.grid)
+        start.add_piece(starting_piece)
+        return start
 
     def is_goal_state(self, state: Grid):
         """
@@ -50,9 +54,6 @@ class HubSpreadProblem:
         cost of expanding to that successor
         """
         # state.display(all_white=True)
-        print("expanded = {}...".format(self.expanded))
-        state.display(scale=100, dirname=outdir)
-        self.expanded += 1
         successors = []
         for hub in state.open_hubs:
             for p in hub.get_connectible_pieces():
@@ -62,6 +63,24 @@ class HubSpreadProblem:
                     grid_with_piece.add_piece(pcopy)
                     successors.append((grid_with_piece, pcopy, 1))
         return successors
+
+    def choose_starting_piece(self, empty_grid : Grid, heuristic, display):
+        min_piece = None
+        min_heur = float('inf')
+        for target in self.targets:
+            for rot_x in range(0,180,90):
+                for rot_y in range(0, 180, 90):
+                    for rot_z in range(0, 180, 90):
+                        p = Piece(rotation=(rot_x,rot_y,rot_z), position=target.position)
+                        grid = deepcopy(empty_grid)
+                        grid.add_piece(p)
+                        h = heuristic(grid, self)
+                        if display:
+                            grid.display(heur=h)
+                        if h < min_heur:
+                            min_heur = h
+                            min_piece = p
+        return min_piece
 
     def get_cost_of_actions(self, actions):
         """
@@ -86,7 +105,7 @@ def maximal_mindist_heuristic(state: Grid, problem: HubSpreadProblem, outdir=Non
         min_start, min_end = target.position, None
         for hub in state.open_hubs:
             dist = np.linalg.norm(target.position - hub.position)
-            grid_dist = dist #/ (3*GRID_UNIT_WITH_SPACING)
+            grid_dist = dist / (3*GRID_UNIT_WITH_SPACING)
             if (grid_dist < mindist):
                 mindist = grid_dist
                 min_end = hub.position
@@ -100,13 +119,13 @@ def maximal_mindist_heuristic(state: Grid, problem: HubSpreadProblem, outdir=Non
 
         # add label of mindist above target
         label_pos = (target.position[0], target.position[1], target.position[2] + GRID_UNIT_WITH_SPACING / 2)
-        labels.append((*label_pos, str("{0:.2f}".format(mindist))))
+        labels.append((*label_pos, str("{0:.1f}".format(mindist))))
 
     state.labels = labels
     state.lines = min_lines
     state.max_target = max_target
 
-    return max_mindist
+    return round(max_mindist,1)
 
 
 def sum_mindist_heuristic(state: Grid, problem: HubSpreadProblem, outdir=None):
@@ -121,16 +140,16 @@ def sum_mindist_heuristic(state: Grid, problem: HubSpreadProblem, outdir=None):
         min_start, min_end = target.position, None
         for hub in state.open_hubs:
             dist = np.linalg.norm(target.position - hub.position)
-            grid_dist = dist #/ GRID_UNIT_WITH_SPACING
+            grid_dist = dist / (3*GRID_UNIT_WITH_SPACING)
             if (grid_dist < mindist):
-                mindist = grid_dist
+                mindist = grid_dist#*50
                 min_end = hub.position
         # add line from target to closest hub
         if not (min_end is None):
             min_lines.append([min_start, min_end, 'grey'])
 
         # accumulate mindist
-        sum_mindist += mindist
+        sum_mindist += mindist*5
 
         # add label of mindist above target
         label_pos = (target.position[0], target.position[1], target.position[2] + GRID_UNIT_WITH_SPACING / 2)
@@ -139,4 +158,4 @@ def sum_mindist_heuristic(state: Grid, problem: HubSpreadProblem, outdir=None):
     state.labels = labels
     state.lines = min_lines
 
-    return sum_mindist
+    return sum_mindist + len(state.remaining_targets())*50

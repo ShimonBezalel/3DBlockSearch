@@ -175,7 +175,7 @@ def null_heuristic(state, problem=None, outdir=None):
     return 0
 
 
-def a_star_search(problem, heuristic=null_heuristic, outdir=None):
+def a_star_search(problem, heuristic=null_heuristic, outdir=None, display=True):
     """
     Search the node that has the lowest combined cost and heuristic first.
     """
@@ -183,15 +183,21 @@ def a_star_search(problem, heuristic=null_heuristic, outdir=None):
     fringe = util.PriorityQueueWithFunction(lambda node: node.heucost())
     backtrace = dict() # {child_state : (parent, action, cost_to_child, heur_from_child) }
 
-    start_state = problem.get_start_state()
+    start_state = problem.get_start_state(heuristic)
     start_heur = heuristic(start_state, problem)
     fringe.push(SearchNode(start_state, 0, start_heur))
     backtrace[start_state] = (None, None, 0, start_heur)
-
+    expanded = 1
     while not fringe.isEmpty():
         node = fringe.pop()
         state = node.state
         cost_to_parent = node.cost
+        print("expanded = {:=4d}... [cost={:=4.1f}, heur={:=4.1f}, total={:=4.1f}]".format(expanded,node.cost,node.heucost()-node.cost,node.heucost()))
+        # state.display(scale=100, dirname=outdir)
+        expanded += 1
+
+        if display:
+            state.display(scale=100, dirname=outdir, heur=node.heucost() - node.cost, cost=node.cost)
 
         if problem.is_goal_state(state):
             state.labels = None
@@ -211,6 +217,8 @@ def a_star_search(problem, heuristic=null_heuristic, outdir=None):
                 child_node = SearchNode(child, cost_to_child,
                                         heur_from_child)
                 fringe.push(child_node)
+            else:
+                pass#print('BEEN IN THIS STATE ALREADY!!! {}'.format(str(child)))
     raise Exception("There is no solution for this problem")
 
 

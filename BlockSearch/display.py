@@ -66,7 +66,7 @@ Y = 1
 Z = 2
 
 count=0
-def display_meshes_with_colors_and_alphas(meshes, corresponding_colors, corresponding_alphas, scale=None, filename=None, lines=None, labels=None, dirname=None):
+def display_meshes_with_colors_and_alphas(meshes, corresponding_colors, corresponding_alphas, scale=None, filename=None, lines=None, labels=None, dirname=None, heur=None, cost=None):
     # Create a new plot
     fig = pyplot.figure()
     axes = mplot3d.Axes3D(fig)
@@ -105,6 +105,13 @@ def display_meshes_with_colors_and_alphas(meshes, corresponding_colors, correspo
         for label in labels:
             axes.text3D(label[X],label[Y],label[Z],label[-1])
 
+    axes.text2D(0.05, 0.8,  "   GRID STATS \n"
+                            "pieces     : {}\n"
+                            "heuristic : {}\n"
+                            "total       : {}\n".format(cost,
+                                                        heur,
+                                                        (cost + heur) if ((cost) and (heur)) else None)
+                            , transform=axes.transAxes)
     # Save to file OR Show the plot to the screen
     if filename:
         pyplot.savefig(filename)
@@ -115,7 +122,7 @@ def display_meshes_with_colors_and_alphas(meshes, corresponding_colors, correspo
         count += 1
     else:
         plt.draw()
-        plt.pause(0.02)
+        plt.pause(0.002)
         #plt.close()
 
 

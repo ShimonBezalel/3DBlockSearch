@@ -4,7 +4,7 @@ import numpy as np
 from stl import mesh
 
 from display import display_meshes_with_colors, random_color
-from grid import GRID_UNIT_IN_MM
+import grid
 from orientation import Orientation, orient_mesh, GLOBAL_TOP, GLOBAL_RIGHT, GLOBAL_FRONT, GLOBAL_DOWN, GLOBAL_LEFT, \
     GLOBAL_BACK, LOCAL_FRONT, LOCAL_BACK, LOCAL_TOP, LOCAL_Z_CW
 
@@ -46,13 +46,14 @@ PIECE_LOCAL_FACE_END_1 = LOCAL_FRONT
 PIECE_LOCAL_FACE_END_2 = LOCAL_BACK
 
 # Position shift of hub center relative to piece center
-POSITION_SHIFT = 1.5 * GRID_UNIT_IN_MM
-END_POSITION_SHIFT_BY_GLOBAL_FACE = {GLOBAL_TOP: np.array((0, 0, POSITION_SHIFT)),  # TOP
-                                     GLOBAL_RIGHT: np.array((POSITION_SHIFT, 0, 0)),  # RIGHT
-                                     GLOBAL_FRONT: np.array((0, -POSITION_SHIFT, 0)),  # FRONT
-                                     GLOBAL_DOWN: np.array((0, 0, -POSITION_SHIFT)),  # DOWN
-                                     GLOBAL_LEFT: np.array((-POSITION_SHIFT, 0, 0)),  # LEFT
-                                     GLOBAL_BACK: np.array((0, POSITION_SHIFT, 0))}  # BACK
+POSITION_SHIFT = 1.5 * 20  # grid.GRID_UNIT_IN_MM
+END_POSITION_SHIFT_BY_GLOBAL_FACE = {GLOBAL_TOP: np.array((0, 0, POSITION_SHIFT), dtype=int),  # TOP
+                                     GLOBAL_RIGHT: np.array((POSITION_SHIFT, 0, 0), dtype=int),  # RIGHT
+                                     GLOBAL_FRONT: np.array((0, -POSITION_SHIFT, 0), dtype=int),  # FRONT
+                                     GLOBAL_DOWN: np.array((0, 0, -POSITION_SHIFT), dtype=int),  # DOWN
+                                     GLOBAL_LEFT: np.array((-POSITION_SHIFT, 0, 0), dtype=int),  # LEFT
+                                     GLOBAL_BACK: np.array((0, POSITION_SHIFT, 0), dtype=int)}  # BACK
+
 
 class Hub:
 
@@ -73,34 +74,38 @@ class Hub:
         if self.htype == TYPE_END_1:
             if not parent_local_face:
                 parent_local_face = LOCAL_FRONT
-            self.mesh = deepcopy(END_1_MESH)
         elif self.htype == TYPE_END_2:
             if not parent_local_face:
                 parent_local_face = LOCAL_BACK
-            self.mesh = deepcopy(END_2_MESH)
-        elif self.htype == TYPE_CENTER:
-            self.mesh = deepcopy(CENTER_MESH)
 
         self.parent_local_face = parent_local_face
         self.color = color
         self.alpha = alpha
-        orient_mesh(self.mesh, self.rotation, self.position)
 
     def get_mesh(self):
         """
         Return the hub's mesh
         :return: A mesh rotated and positioned in 3D space
         """
-        return self.mesh
+        if self.htype == TYPE_END_1:
+            mesh = deepcopy(END_1_MESH)
+        elif self.htype == TYPE_END_2:
+            mesh = deepcopy(END_2_MESH)
+        elif self.htype == TYPE_CENTER:
+            mesh = deepcopy(CENTER_MESH)
+        else:
+            raise AssertionError('Self has invalid hub type {}!'.format(self.htype))
+        orient_mesh(mesh, self.rotation, self.position)
+        return mesh
 
     @property
     def position(self):
         if not self.parent_local_face:  # Center Hub uses parent's position
-            position_shift = np.array((0, 0, 0))
+            position_shift = np.array((0, 0, 0), dtype=int)
         else:
             parent_global_face = self.parent.orientation.local_face_to_global_face(self.parent_local_face)
             position_shift = END_POSITION_SHIFT_BY_GLOBAL_FACE[
-                parent_global_face] if parent_global_face else np.array((0, 0, 0))
+                parent_global_face] if parent_global_face else np.array((0, 0, 0), dtype=int)
         return self.parent.position + position_shift
 
     @property
@@ -118,7 +123,7 @@ class Hub:
         :return:
         """
         if (self.htype == TYPE_CENTER and other.htype != TYPE_CENTER) or \
-            (self.htype != TYPE_CENTER and other.htype == TYPE_CENTER):
+                (self.htype != TYPE_CENTER and other.htype == TYPE_CENTER):
             return False
 
         global_rotations_from_reset = self.orientation.get_global_rotations_from_reset()
@@ -199,7 +204,7 @@ class Hub:
                 # Find global face of this connection
                 global_face = orientation.local_face_to_global_face(PIECE_LOCAL_FACE_END_2)
                 # Find respective shift of piece center
-                position_shift = tuple([-1*shift for shift in END_POSITION_SHIFT_BY_GLOBAL_FACE[global_face]])
+                position_shift = tuple([-1 * shift for shift in END_POSITION_SHIFT_BY_GLOBAL_FACE[global_face]])
                 # Generate matching piece
                 end_2_piece = piece.Piece(orientation=orientation, position=self.position + position_shift)
                 pieces.append(end_2_piece)
@@ -254,7 +259,7 @@ class Hub:
         pass
 
     def __str__(self):
-        return "{} : {} : {}".format(self.htype, self.position, self.orientation)
+        return "{} : {} : {}".format(self.htype, np.array(self.position,dtype=int), self.orientation)
 
     def __repr__(self):
         return str(self)

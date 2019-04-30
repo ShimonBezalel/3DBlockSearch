@@ -11,7 +11,7 @@ PIECE_MESH = mesh.Mesh.from_file("stl/piece.stl")
 
 class Piece:
 
-    def __init__(self, orientation=None, rotation=np.array((0,0,0)), position=np.array((0,0,0)), piece_mesh=PIECE_MESH,
+    def __init__(self, orientation=None, rotation=np.array((0,0,0),dtype=int), position=np.array((0,0,0),dtype=int), piece_mesh=PIECE_MESH,
                  color=None, alpha=0.20):
         """
         :param piece_mesh:  Object defining shape of piece for rendering, will be DEEP COPIED
@@ -24,23 +24,23 @@ class Piece:
         if orientation:
             rotation = orientation.to_rotation()
         if not color:
-            color = random_color()
+            color = 'white'#random_color()
         self.rotation = rotation
         self.position = position
-        self.mesh = deepcopy(piece_mesh)
         self.end1 = hub.Hub(htype=hub.TYPE_END_1, parent=self, parent_local_face=LOCAL_FRONT, color=color)
         self.end2 = hub.Hub(htype=hub.TYPE_END_2, parent=self, parent_local_face=LOCAL_BACK, color=color)
         self.center = hub.Hub(htype=hub.TYPE_CENTER, parent=self, color=color)
         self.color = color
         self.alpha = alpha
-        orient_mesh(self.mesh, self.rotation, self.position)
 
     def get_mesh(self):
         """
         Return the piece's mesh
         :return: A mesh rotated and positioned in 3D space
         """
-        return self.mesh
+        mesh = deepcopy(PIECE_MESH)
+        orient_mesh(mesh, self.rotation, self.position)
+        return mesh
 
     @property
     def orientation(self):
@@ -71,7 +71,7 @@ class Piece:
         pass
 
     def __str__(self):
-        return "{} : {}".format(self.position, self.orientation)
+        return "{} : {}".format(np.array(self.position,dtype=int), self.orientation)
 
     def __repr__(self):
         return str(self)
