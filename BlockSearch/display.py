@@ -66,7 +66,7 @@ Y = 1
 Z = 2
 
 count=0
-def display_meshes_with_colors_and_alphas(meshes, corresponding_colors, corresponding_alphas, scale=None, filename=None, lines=None, labels=None, dirname=None, heur=None, cost=None):
+def display_meshes_with_colors_and_alphas(meshes, corresponding_colors, corresponding_alphas, scale=50, filename=None, lines=None, labels=None, dirname=None, heur=None, cost=None):
     # Create a new plot
     fig = pyplot.figure()
     axes = mplot3d.Axes3D(fig)

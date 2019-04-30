@@ -3,7 +3,7 @@ from stl import mesh
 
 from display import display_parts, display_meshes_with_colors, display_meshes
 from grid import GRID_UNIT_IN_MM, Grid
-from hub import Hub
+from hub import Hub, TYPE_END_1
 from orientation import orient_mesh
 from piece import Piece  # , orient_mesh
 from unittest import TestCase
@@ -39,7 +39,7 @@ class Test_Parts(TestCase):
                     position = np.array([0, 0, 0])
                     orient_mesh(end1_mesh, rotation=rotation, translation=position)
                     p = Piece(position=position, rotation=rotation)
-                    end1_piece = Hub(Hub.TYPE_END_1,parent=p)
+                    end1_piece = Hub(TYPE_END_1,parent=p)
                     meshes.append(end1_mesh)
                     meshes.append(p.get_mesh())
                     meshes.append(end1_piece.get_mesh())
@@ -51,9 +51,9 @@ class Test_Parts(TestCase):
                     display_meshes_with_colors([end1_mesh, p.get_mesh(),end1_piece.get_mesh()], ['red', 'white', 'blue'])
 
     def test_rotate_separately(self):
-        end1 = Hub(Hub.TYPE_END_1, Piece())
-        end2 = Hub(Hub.TYPE_END_2, Piece())
-        center = Hub(Hub.TYPE_CENTER, Piece())
+        end1 = Hub(TYPE_END_1, Piece())
+        end2 = Hub(TYPE_END_2, Piece())
+        center = Hub(TYPE_CENTER, Piece())
         display_meshes([p.get_mesh() for p in [end1, end2, center]])
 
 

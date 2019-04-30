@@ -24,7 +24,7 @@ X = 0
 Y = 1
 Z = 2
 
-
+count=0
 class Grid:
 
     def __init__(self, targets=(Target((0, 0, 0)),)):
@@ -124,11 +124,17 @@ class Grid:
         if len(self.pieces) >= 1:
             piece = self.pieces[-1]
             meshes.append(piece.get_mesh())
-            colors.append(CURRENT_PIECE_COLOR)
+            if all_white:
+                colors.append(CURRENT_PIECE_COLOR)
+            else:
+                colors.append(piece.color)
             alphas.append(piece.alpha)
             for hub in piece.get_hubs():
                 meshes.append(hub.get_mesh())
-                colors.append(CURRENT_PIECE_COLOR)
+                if all_white:
+                    colors.append(CURRENT_PIECE_COLOR)
+                else:
+                    colors.append(hub.color)
                 alphas.append(hub.alpha)
 
         if self.max_target:
@@ -178,14 +184,16 @@ class Grid:
         if filename:
             pyplot.savefig(filename)
             print("saving {}...".format(filename))
-        elif dirname:
-            global count
-            pyplot.savefig("{}/{}.png".format(dirname, count))
-            count += 1
-        else:
-            plt.draw()
-            plt.pause(0.2)
-            # plt.close()
+        #if dirname:
+        global count
+        # dirname="../screenshots/chair"
+        # print("saving {}/{}...".format(dirname, count))
+        # pyplot.savefig("{}/{}.png".format(dirname, count))
+        # count += 1
+       # else:
+        plt.draw()
+        plt.pause(0.2)
+        plt.close()
 
     # def display(self, meshes=None, colors=None, alphas=None, all_white=True, scale=100, filename=None, lines=None,
     #             labels=None, dirname=None):

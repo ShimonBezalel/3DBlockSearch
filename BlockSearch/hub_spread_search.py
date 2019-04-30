@@ -156,7 +156,7 @@ def sum_mindist_heuristic(state: Grid, problem: HubSpreadProblem, outdir=None):
             min_lines.append([min_start, min_end, 'grey'])
 
         # accumulate mindist
-        sum_mindist += mindist*5
+        sum_mindist += mindist*1.1
 
         # add label of mindist above target
         label_pos = (target.position[0], target.position[1], target.position[2] + GRID_UNIT_WITH_SPACING / 2)
