@@ -33,7 +33,7 @@ class SearchProblem:
         """
         util.raiseNotDefined()
 
-    def get_successors(self, state):
+    def get_successors(self, state, outdir=None, heuristic=lambda x:0):
         """
         state: Search state
 
@@ -81,7 +81,7 @@ def generic_first_search(problem, fringe, outdir=None):
             state.display(scale=100, dirname=outdir)
             return construct_path(state, backtrace)
 
-        for child, action, _ in problem.get_successors(state, outdir):
+        for child, action, _ in problem.get_successors(state, outdir, ):
             if child not in backtrace:
                 backtrace[child] = (state, action)
 
@@ -192,7 +192,7 @@ def a_star_search(problem, heuristic=null_heuristic, outdir=None, display=True):
         node = fringe.pop()
         state = node.state
         cost_to_parent = node.cost
-        print("expanded = {:=4d}... [cost={:=4.1f}, heur={:=4.1f}, total={:=4.1f}]".format(expanded,node.cost,node.heucost()-node.cost,node.heucost()))
+        print("expanded = {:=4d}... [cost={:=4.1f}, heur={:=4.1f}, total={:=4.1f}]".format(expanded,node.cost,node.heucost()-node.cost, node.heucost()))
         # state.display(scale=100, dirname=outdir)
         expanded += 1
 
@@ -204,7 +204,7 @@ def a_star_search(problem, heuristic=null_heuristic, outdir=None, display=True):
             state.display(scale=100, dirname=outdir)
             return construct_path(state, backtrace)
 
-        for child, action, _ in problem.get_successors(state, outdir):
+        for child, action, _ in problem.get_successors(state, outdir, heuristic):
             cost_to_child = cost_to_parent + problem.get_cost_of_actions([action])
             visited = (child in backtrace)
             shorter = (visited) and (cost_to_child < backtrace[child][COST_INDEX])

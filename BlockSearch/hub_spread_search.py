@@ -27,13 +27,14 @@ class HubSpreadProblem:
         """
         Returns the start state for the search problem
         """
-        if not heuristic:
-            starting_piece = Piece(position=self.targets[0].position)
-        else:
-            starting_piece = self.choose_starting_piece(self.grid, heuristic, display)
-        start = deepcopy(self.grid)
-        start.add_piece(starting_piece)
-        return start
+        # if not heuristic:
+        #     starting_piece = Piece(position=self.targets[0].position)
+        # else:
+        #     starting_piece = self.choose_starting_piece(self.grid, heuristic, display)
+        # start = deepcopy(self.grid)
+        # start.add_piece(starting_piece)
+        return self.grid
+        #return start
 
     def is_goal_state(self, state: Grid):
         """
@@ -43,7 +44,7 @@ class HubSpreadProblem:
         """
         return (len(state.remaining_targets()) == 0)
 
-    def get_successors(self, state: Grid, outdir=None):
+    def get_successors(self, state: Grid, outdir=None, heuristic=lambda x:0):
         """
         state: Search state
 
@@ -53,7 +54,13 @@ class HubSpreadProblem:
         required to get there, and 'stepCost' is the incremental
         cost of expanding to that successor
         """
-        # state.display(all_white=True)
+        # Return starting piece on first call
+        if not state.pieces:
+            p = self.choose_starting_piece(state, heuristic=heuristic,display=False)
+            grid_with_piece = deepcopy(state)
+            grid_with_piece.add_piece(p)
+            return [(grid_with_piece, p, 1),]
+        # Then return successors
         successors = []
         for hub in state.open_hubs:
             for p in hub.get_connectible_pieces():

@@ -187,3 +187,34 @@ class Test_Block_Search(TestCase):
         for piece in path:
             grid.add_piece(piece)
             grid.display(all_white=False, dirname=OUT_DIR_A_STAR)
+
+    def test_sum_mindist_heuristic_targets(self, targets, outdir=None):
+        OUT_DIR_A_STAR=outdir
+        empty_grid = Grid(targets)
+        empty_grid.display(all_white=True, dirname=OUT_DIR_A_STAR, scale=100)
+
+        problem = HubSpreadProblem(targets)  # t4, t5])
+        path = a_star_search(problem, sum_mindist_heuristic, outdir=OUT_DIR_A_STAR)
+
+        grid = empty_grid
+        grid.lines = None
+        grid.labels = None
+
+        grid.display(all_white=True, dirname=OUT_DIR_A_STAR)
+        for piece in path:
+            grid.add_piece(piece)
+            grid.display(all_white=False, dirname=OUT_DIR_A_STAR)
+
+    def test_sum_mindist_heuristic(self):
+        t1 = Target((-3, 0, -5))
+        t2 = Target((1, 0, -5))
+        t3 = Target((-3, 5, -5))
+        t4 = Target((1, 5, -5))
+        t9 = Target([-1,0,0])
+        return self.test_sum_mindist_heuristic_targets([t1,t2,t3,t4,t9])#t5,t6,t7,t8])
+
+    def test_sum_mindist_heuristic(self):
+        t1 = Target((0, 0, -6))
+        t2 = Target((0, 4 ,-6))
+        t3 = Target((0, 2, 0))
+        return self.test_sum_mindist_heuristic_targets([t1, t2, t3])  # t5,t6,t7,t8])
