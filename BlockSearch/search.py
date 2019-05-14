@@ -203,7 +203,9 @@ def a_star_search(problem, heuristic=null_heuristic):
                 child_node = SearchNode(child, cost_to_child,
                                         heur_from_child)
                 fringe.push(child_node)
-    raise Exception("There is no solution for this problem")
+    print("There is no solution for this problem")
+    return []
+    # raise Exception("There is no solution for this problem")
 
 
 # Abbreviations

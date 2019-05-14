@@ -356,6 +356,12 @@ class Ring_Floor_Tests(TestCase):
         if DISPLAY:
             display([b.render() for b in some + [floor]])
 
+    def test_multiring(self):
+        floor = RingFloor(floor_mesh, size=100, number_of_rings=2, ring_size=4, distance_between_rings=15)
+        if DISPLAY:
+            display_cells(floor.get_cells())
+            # display([floor.render()])
+
 
 
 

@@ -91,7 +91,7 @@ class Physics_Test(TestCase):
 
         return results
 
-    def build_janga(self, n):
+    def build_janga(self, n, stability_check=True):
         """
 
         :param c: int defining complexity of build
@@ -103,31 +103,38 @@ class Physics_Test(TestCase):
         for l in range(0, n, 2):
             for i in range(-2, 3):
                 b = Block(block_mesh, 'flat_wide', (i * 3, 0, l))
-
-                start = time.time()
-                stable = Physics.is_stable(self.block_tower, b)
-                elapse = time.time() - start
-                results.append(elapse)
-                if stable:
+                if stability_check:
+                    start = time.time()
+                    stable = Physics.is_stable(self.block_tower, b)
+                    elapse = time.time() - start
+                    results.append(elapse)
+                    if stable:
+                        self.block_tower.add(b)
+                        self.meshes.append(b.render())
+                    else:
+                        print("Block #{} {} was found to be unstable".format(i, str(b)))
+                        return results
+                else:
                     self.block_tower.add(b)
                     self.meshes.append(b.render())
-                else:
-                    print("Block #{} {} was found to be unstable".format(i, str(b)))
-                    return results
+
 
             for i in range(-2, 3):
                 b = Block(block_mesh, 'flat_thin', (0, i * 3, l+1))
-
-                start = time.time()
-                stable = Physics.is_stable(self.block_tower, b)
-                elapse = time.time() - start
-                results.append(elapse)
-                if stable:
+                if stability_check:
+                    start = time.time()
+                    stable = Physics.is_stable(self.block_tower, b)
+                    elapse = time.time() - start
+                    results.append(elapse)
+                    if stable:
+                        self.block_tower.add(b)
+                        self.meshes.append(b.render())
+                    else:
+                        print("Block #{} {} was found to be unstable".format(i, str(b)))
+                        return results
+                else:
                     self.block_tower.add(b)
                     self.meshes.append(b.render())
-                else:
-                    print("Block #{} {} was found to be unstable".format(i, str(b)))
-                    return results
 
         return results
 
@@ -213,6 +220,14 @@ class Physics_Test(TestCase):
         self.assertTrue(Physics.is_stable(self.block_tower, new_block))
         if DISPLAY:
             display(self.meshes + [new_block.render()])
+
+    def test_build_janga(self):
+        self.build_janga(30, stability_check=False)
+        tower = self.block_tower
+        blocks = [b for b in tower.gen_blocks()]
+        display([b.render() for b in blocks], scale=20)
+        save_by_orientation_blocks(blocks, subfolder="janga", seperate_orientations=False)
+
 
     def test_physics_timing(self):
         DISPLAY = False
@@ -504,7 +519,7 @@ class Physics_Test(TestCase):
                         state.add(p[i])
                 else: # we're not adding these blocks, so we need to give up on them
                     for i in good_blocks:
-                        state.disconnect(p[i])
+                        state.disconnect_block_from_neighbors(p[i])
 
         force_sym(blocks)
 
@@ -540,7 +555,7 @@ class Physics_Test(TestCase):
                                 state.add(p[i])
                         else:  # we're not adding these blocks, so we need to give up on them
                             for i in good_blocks:
-                                state.disconnect(p[i])
+                                state.disconnect_block_from_neighbors(p[i])
                     else:
                         bad_desc_c += 1
 

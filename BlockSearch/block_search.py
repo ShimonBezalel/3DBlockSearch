@@ -7,7 +7,6 @@ from BlockSearch.search import SearchProblem
 from BlockSearch.tower_state import Tower_State
 from BlockSearch.block import Block
 from typing import List, Set, Dict, Tuple, Optional, Generator
-from BlockSearch import physics
 from pprint import pprint as pp
 from BlockSearch.render import display
 
@@ -15,36 +14,12 @@ from BlockSearch.render import display
 X = 0
 Y = 1
 Z = 2
-block_mesh = mesh.Mesh.from_file('kapla.stl')
-DISPLAY = True
+
+# The module currently uses this block mesh, but can be updated to use any mesh as render source.
+BLOCK_MESH = mesh.Mesh.from_file('kapla.stl')
+DISPLAY = False
 
 class Block_Search(SearchProblem):
-    minus = [-1, 1, -1, 1]
-    tinus = [-1, -1, 1, 1]
-
-    @staticmethod
-    def propagate(orientation : Tuple[int, int, int], position : Tuple[int, int, int], dist=6):
-        if orientation == (90, 0, 0) or orientation == (90, 0, 90):
-            dist_x = dist // 2
-            dist_y = dist // 2
-
-        elif orientation == (0, 90, 0) or orientation == (0, 0, 0):
-            dist_x = dist
-            dist_y = dist * 2
-
-        else:
-            dist_x = dist * 2
-            dist_y = dist
-
-        # add blocks to tower in some order, without creating collisions
-        # Create i identical blocks
-        positions = []
-        for i in range(len(Block_Search.minus)):
-            positions.append((position[X] + Block_Search.minus[i] * dist_x,
-                              position[Y] + Block_Search.tinus[i] * dist_y,
-                              position[Z]))
-        block_descriptors = [(orientation, new_position) for new_position in positions]
-        return block_descriptors
 
     def __init__(self,
                  floor_size=30,
@@ -56,7 +31,10 @@ class Block_Search(SearchProblem):
                  sym_base_dist=6,
                  limit_blocks_in_action=10,
                  limit_branching=10,
-                 height_goal=30
+                 height_goal=30,
+                 ring_width=3,
+                 number_of_rings=1,
+                 distance_between_rings=10
                  ):
         self._floor_size = floor_size
         self._limit_sons = limit_sons
@@ -71,6 +49,9 @@ class Block_Search(SearchProblem):
         self._symmetrical_base_distance = sym_base_dist
         self._limit_branching=limit_branching
         self._height_goal = height_goal
+        self._ring_width = ring_width
+        self._number_of_rings = number_of_rings
+        self._distance_between_rings = distance_between_rings
 
     def get_start_state(self):
         return Tower_State(self._floor_size)
@@ -101,7 +82,7 @@ class Block_Search(SearchProblem):
                     if state.is_bad_block(Block.gen_str(desc)):
                         self._num_of_descriptors_disqualified += 1
                     else:  # good block description, lets try it out
-                        blocks = [Block(block_mesh, *desc)]
+                        blocks = [Block(BLOCK_MESH, *desc)]
                         if self._use_symmetry:
                             sub_descriptors = Block_Search.propagate(*desc, dist=self._symmetrical_base_distance)
                             # qualified_symmetrical_brothers = len(sub_descriptors)
@@ -110,7 +91,7 @@ class Block_Search(SearchProblem):
                                     self._num_of_descriptors_disqualified += 1
                                     # qualified_symmetrical_brothers -= 1
                                 else:
-                                    blocks.append(Block(block_mesh, *sym_desc))
+                                    blocks.append(Block(BLOCK_MESH, *sym_desc))
                         to_add = []
                         for candidate_block in blocks:
                             if new_state.can_add(candidate_block):
@@ -130,7 +111,7 @@ class Block_Search(SearchProblem):
                             else:
                                 for good_block in to_add:
                                     self._num_of_blocks_disqualified += 1
-                                    new_state.disconnect(good_block)
+                                    new_state.disconnect_block_from_neighbors(good_block)
                         else:
                             for good_block in to_add:
                                 new_state.add(good_block)
@@ -140,11 +121,11 @@ class Block_Search(SearchProblem):
             # if DISPLAY:
             #     display_colored([b.render() for b in state.gen_blocks()])
             # return True
-        print("\tNum of desc disqualified:{}\tNum of blocks disqualified:{}\tNum of staturated:{}".format(
-            self._num_of_descriptors_disqualified,
-            self._num_of_blocks_disqualified,
-            self._num_of_blocks_saturated
-        ))
+        # print("\tNum of desc disqualified:{}\tNum of blocks disqualified:{}\tNum of staturated:{}".format(
+        #     self._num_of_descriptors_disqualified,
+        #     self._num_of_blocks_disqualified,
+        #     self._num_of_blocks_saturated
+        # ))
         return successors
 
     def get_cost_of_actions(self, actions):
@@ -161,17 +142,20 @@ class Block_Search(SearchProblem):
 class Cover_Block_Search(Block_Search):
 
     def get_start_state(self) -> Tower_State:
-        tower: Tower_State = Tower_State(size=self._floor_size, ring_floor=True)
+        tower: Tower_State = Tower_State(self._floor_size, # size
+                                         True, # ring floor
+                                         None, # father state
+                                         self._ring_width, # args
+                                         self._number_of_rings,
+                                         self._distance_between_rings)
         return tower
 
     def get_successors(self, tower_state: Tower_State):
 
         print("Building succesors for state of height:{}".format(tower_state._max_level))
-        # new_states = [copy(state) for _ in range(self._limit_branching)]
-        # successors = []
         pp(tower_state)
         all_possible_son_desc = []
-        for father_block in tower_state.gen_blocks(no_floor=False):
+        for father_block in tower_state.gen_blocks(no_floor=False, filter_saturated_block=False):
             if father_block.is_saturated(tower_state):
                 self._num_of_blocks_saturated += 1
                 continue
@@ -199,7 +183,7 @@ class Cover_Block_Search(Block_Search):
                 if tower_state.is_bad_block(Block.gen_str(desc)):
                     self._num_of_descriptors_disqualified += 1
                     continue
-                son_block = Block(block_mesh, *desc)
+                son_block = Block(BLOCK_MESH, *desc)
                 if new_tower.can_add(son_block):
                     new_tower.add(son_block)
                     actions.append(son_block)
@@ -209,8 +193,8 @@ class Cover_Block_Search(Block_Search):
                 yield (new_tower, actions, len(actions))
             else:
                 print(
-                    "\tNum of desc disqualified:\t{}\n\tNum of blocks disqualified:\t{}\n\tNum of blocks saturated:\t{}".format(
-                        self._num_of_descriptors_disqualified,
+                    "\tNum bad from hash:\t{}\n\tNum of blocks disqualified:\t{}\n\tNum of blocks saturated:\t{}".format(
+                        tower_state._bad_block_calls,
                         self._num_of_blocks_disqualified,
                         self._num_of_blocks_saturated
                     ))
@@ -222,6 +206,33 @@ class Cover_Block_Search(Block_Search):
             self._num_of_blocks_saturated
         ))
         #eturn successors
+
+    series1 = [-1, 1, -1, 1]
+    series2 = [-1, -1, 1, 1]
+
+    @staticmethod
+    def propagate(orientation : Tuple[int, int, int], position : Tuple[int, int, int], dist=6):
+        if orientation == (90, 0, 0) or orientation == (90, 0, 90):
+            dist_x = dist // 2
+            dist_y = dist // 2
+
+        elif orientation == (0, 90, 0) or orientation == (0, 0, 0):
+            dist_x = dist
+            dist_y = dist * 2
+
+        else:
+            dist_x = dist * 2
+            dist_y = dist
+
+        # add blocks to tower in some order, without creating collisions
+        # Create i identical blocks
+        positions = []
+        for i in range(len(Block_Search.series1)):
+            positions.append((position[X] + Block_Search.series1[i] * dist_x,
+                              position[Y] + Block_Search.series2[i] * dist_y,
+                              position[Z]))
+        block_descriptors = [(orientation, new_position) for new_position in positions]
+        return block_descriptors
 
 
 

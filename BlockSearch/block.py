@@ -3,7 +3,7 @@ from enum import Enum
 from random import shuffle
 from pprint import pprint as pp
 from memoized import memoized
-from BlockSearch.piece import Piece
+# from BlockSearch.piece import Piece
 import math
 import numpy as np
 from stl import mesh
@@ -47,7 +47,7 @@ ORIENTATION_STANDING = {
 
 block_mesh = mesh.Mesh.from_file('kapla.stl')
 
-COVER_THRESHOLD = 0.2
+COVER_THRESHOLD = 0.4
 
 @memoized
 def init_rotated_mesh(arg):
@@ -81,7 +81,10 @@ class Block (Piece):
         """
         Used as copy constructor
         """
-        super().__init__()
+        # super().__init__()
+        self.orientation = None
+        self.position = None
+        self._rendered_mesh = None
         self._saturated = False
         self._temp_above        = set()
         self._str: str        = "Block N/A"
@@ -105,6 +108,9 @@ class Block (Piece):
         # todo: reuse rotation matrix!! can reduce init time by 30%
 
         super().__init__(shape, orientation, position)
+        self.orientation = orientation
+        self.position = position
+        self._rendered_mesh = shape
         self._saturated = False
         self._rendered_mesh = deepcopy(init_rotated_mesh(orientation))
         self._init_translation()
@@ -425,7 +431,7 @@ class Block (Piece):
         for block in state.get_blocks_below(self):
             block.reset_aggregate_mesh(state)
 
-    def is_saturated(self, tower_state):
+    def is_saturated(self, tower_state, no_changes=False):
         if self._saturated:
             return True
         else:
@@ -437,6 +443,8 @@ class Block (Piece):
                 cover_above_me  |= block._cover_cells
             covering_me = self._cover_cells & cover_above_me
             if len(covering_me) / len(self._cover_cells) > COVER_THRESHOLD:
+                if no_changes:
+                    return True
                 self._saturated = True
             return self._saturated
 
@@ -521,12 +529,16 @@ class Block (Piece):
 
 
 class RingFloor(Block):
-    def __init__(self, floor_mesh, size=30):
+    def __init__(self, floor_mesh, size=30, ring_size=15, number_of_rings=1, distance_between_rings=10):
         self.SHAPE_IN_CELLS = (size, size, 1)
         self._size = size
+        self._ring_size = ring_size
+        self._number_of_rings = number_of_rings
+        self._distance_between_rings = distance_between_rings
+        self._str = "Ring Floor: size {}".format(size)
+
         super().__init__(shape=floor_mesh, orientation=(0, 0, 0 ), position=(0, 0, 0 ))
         self._rendered_mesh = floor_mesh
-        self._str = "Ring Floor: size {}".format(size)
 
     def get_size(self):
         return self._size
@@ -544,12 +556,20 @@ class RingFloor(Block):
         half_width = self._size // 2
         half_height = 0
 
+        ring_distances = set()
+        for i, l in enumerate(range(self._size//4, self._size, self._distance_between_rings)):
+            ring_distances |= set(range(l - math.floor(self._ring_size / 2.0), l + math.ceil(self._ring_size / 2.0)))
+            if i >= self._number_of_rings:
+                break
+        print(ring_distances)
+
         for x in range(-half_depth, half_depth + 1):
             for y in range(-half_width, half_width + 1):
                 for z in range(-half_height, half_height + 1):
                     posish = (x, y, z)
                     dist = np.linalg.norm((posish, (0, 0, 0)))
-                    if dist >= self._size / 2 - 3 and dist <= self._size / 2:
+                    # if dist >= self._size / 2 - 3 and dist <= self._size / 2:
+                    if math.floor(dist) in ring_distances or math.ceil(dist) in ring_distances:
                         self._cells.add((cog[X] + x, cog[Y] + y, cog[Z] + z))
                         self._cover_cells.add((cog[X] + x, cog[Y] + y))
 

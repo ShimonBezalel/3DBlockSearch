@@ -28,19 +28,19 @@ def is_stable(tower_state, new_block : Block):
     """
     bottom_level    = new_block.get_bottom_level()
     top_level       = new_block.get_top_level()
-    blocks_by_top_level= tower_state.get_blocks_by_top_level()
-    blocks_by_bottom_level= tower_state.get_blocks_by_bottom_level()
+    # blocks_by_top_level= tower_state.get_blocks_by_top_level()
+    # blocks_by_bottom_level= tower_state.get_blocks_by_bottom_level()
 
 
     # Initiate the relation to surrounding blocks in the tower
     # Short-circuit the expensive calculation if can be skipped.
-    blocks_below = calculate_below(new_block, blocks_by_top_level[bottom_level - 1]) \
-        if (bottom_level - 1) in blocks_by_top_level \
+    blocks_below = calculate_below(new_block, tower_state.get_by_top(bottom_level - 1)) \
+        if (bottom_level - 1) in tower_state \
         else set()
     tower_state.set_blocks_below(new_block, blocks_below)
 
-    blocks_above = calculate_above(new_block, blocks_by_bottom_level[top_level + 1]) \
-        if (top_level + 1) in blocks_by_bottom_level \
+    blocks_above = calculate_above(new_block, tower_state.get_by_bottom(top_level + 1)) \
+        if (top_level + 1) in tower_state \
         else set()
     tower_state.set_blocks_above(new_block, blocks_above)
 
@@ -49,7 +49,7 @@ def is_stable(tower_state, new_block : Block):
         return False
 
     # connect the new block to the blocks above and below by making changes to their neighbor setting.
-    tower_state.connect(new_block)
+    tower_state.connect_block_to_neighbors(new_block)
 
     if is_stable_helper((tower_state, new_block)):
         return True
@@ -59,7 +59,7 @@ def is_stable(tower_state, new_block : Block):
         tower_state.add_bad_block_state(new_block)
 
         # release the relation of this block on it neighbors
-        tower_state.disconnect(new_block)
+        tower_state.disconnect_block_from_neighbors(new_block)
         return False
 
 @memoized
@@ -67,21 +67,15 @@ def is_stable_helper(arg):
     tower_state, new_block = arg
     bottom_level = new_block.get_bottom_level()
     # top_level = new_block.get_top_level()
-    block_state = tower_state.get_blocks_by_top_level()
+    # block_state = tower_state.get_blocks_by_top_level()
 
     # The first level sits on an infinite stable ground and needs no further calculation
     if bottom_level == FLOOR_LEVEL:
-        if DEBUG:
-            display_board(block_state, [], new_block)
         return True
 
     # Initiate the support block list. Assumed to exist
     blocks_below: Set[Block] = tower_state.get_blocks_below(new_block)
     blocks_above: Set[Block] = tower_state.get_blocks_above(new_block)
-
-
-    if DEBUG:
-        display_board(block_state, list(blocks_below), new_block)
 
     # Empty set means block is floating in air. This is considered a bug in case new blocks
     # are only spawned off others
@@ -207,7 +201,6 @@ def is_overlapping(block_tower , new_block : Block):
 
     bottom_level : int = new_block.get_bottom_level()
     top_level    : int = new_block.get_top_level()
-    blocks_by_top_level = block_tower.get_blocks_by_top_level()
     """
     Only scan blocks with top levels above my bottom level.
     X - Block. B - Bottom layer. T - Top layer
@@ -219,8 +212,8 @@ def is_overlapping(block_tower , new_block : Block):
                                                                         XXXX
     
     """
-    for level in filter(lambda l: l >= bottom_level, blocks_by_top_level.keys()):
-        for other_block in blocks_by_top_level[level]:
+    for level in filter(lambda l: l >= bottom_level, block_tower.keys()):
+        for other_block in block_tower.get_by_top(level):
             """
             Diqualify for overlap any block with a bottom above our top
             X - Block. B - Bottom layer. T - Top layer

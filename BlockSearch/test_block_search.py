@@ -1,3 +1,4 @@
+import time
 from unittest import TestCase
 from uuid import uuid4
 
@@ -5,7 +6,7 @@ from BlockSearch.block_search import Block_Search, Cover_Block_Search
 from BlockSearch.search import a_star_search, null_heuristic
 from pprint import pprint as pp
 from BlockSearch.tower_state import Tower_State
-from BlockSearch.render import save_by_orientation, save_by_orientation_blocks, save
+from BlockSearch.render import save_by_orientation, save_by_orientation_blocks, save, display
 from BlockSearch.physics import combine
 from BlockSearch.block import ORIENTATIONS
 import os
@@ -131,35 +132,62 @@ class Cover_Block_Search_Test(TestCase):
 
 
     def test_distance_from_max_heuristic20(self):
-        print("max dist 20 height")
-        s = a_star_search(Cover_Block_Search(height_goal=20, floor_size=20, limit_branching=5, limit_sons=500), dist_heuristic)
+        print("max dist 50 height")
+        s = a_star_search(Cover_Block_Search(height_goal=200,
+                                             floor_size=60,
+                                             limit_branching=200000,
+                                             limit_sons=500,
+                                             limit_blocks_in_action=20,
+                                             random_order=True,
+                                             ring_width=15,
+                                             number_of_rings=1,
+                                             distance_between_rings=15
+                                             ), dist_heuristic)
+        DISPLAY = True
+        SAVE = True
         pp(s)
         blocks = []
         for action in s:
             blocks.extend(action)
+        if DISPLAY:
+            display([b.render() for b in blocks], scale=50)
         if SAVE:
-            save_by_orientation_blocks(blocks=blocks, subfolder="search_result_20")
+            save_by_orientation_blocks(blocks=blocks, subfolder="last52", seperate_orientations=False)
 
     def test_distance_from_max_heuristic100(self):
         print("max dist 100 height")
-        s = a_star_search(Cover_Block_Search(height_goal=31,
-                                             floor_size=30,
-                                             limit_branching=1000,
-                                             limit_sons=500,
-                                             limit_blocks_in_action=2,
-                                             random_order=False
-
-
-                                             ), dist_heuristic)
-        pp(s)
-
-        blocks = []
-        for action in s:
-            blocks.extend(action)
-        print(len(blocks))
-        SAVE = True
+        lapses = []
+        for h in range(15, 60, 6):
+            print("#"*100)
+            print(h)
+            start = time.time()
+            s = a_star_search(Cover_Block_Search(height_goal=h,
+                                                 floor_size=30,
+                                                 limit_branching=200000,
+                                                 limit_sons=500,
+                                                 limit_blocks_in_action=4,
+                                                 random_order=False,
+                                                 ring_width=3,
+                                                 number_of_rings=1,
+                                                 distance_between_rings=12
+                                                 ), dist_heuristic)
+            lapse = time.time() - start
+            blocks = []
+            for action in s:
+                blocks.extend(action)
+            print(len(blocks))
+            lapses.append((h, lapse, len(s), len(blocks)))
+            pp(lapses)
+            pp(s)
+        for h, lapse, steps, nblocks in lapses:
+            print("no_heuristic\t{}\t{}\t{}\t{}\t".format(h, lapse, steps, nblocks))
+        # blocks = []
+        # for action in s:
+        #     blocks.extend(action)
+        # print(len(blocks))
+        SAVE = False
         if SAVE:
-            save_process(actions=s, subfolder="cover_tower_30_no_rand_low_thresh_1000branches", seperate_by_orientation=False)
+            save_process(actions=s, subfolder="2rings_small_steps", seperate_by_orientation=True)
 
     def test_distance_from_max_heuristic50sym(self):
         print("max dist 50 height, symmetrical")
